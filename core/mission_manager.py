@@ -235,3 +235,13 @@ class MissionManager:
         mission["replanned"] = True
         self.save(missions)
         return mission
+
+    def get_agent_screen_path(self, mission_id, positions) -> list[tuple]:
+        mission = self.get_mission(mission_id)
+        if not mission:
+            return []
+        out = []
+        for node_id in mission.get("path", []):
+            if node_id in positions:
+                out.append(tuple(positions[node_id]))
+        return out

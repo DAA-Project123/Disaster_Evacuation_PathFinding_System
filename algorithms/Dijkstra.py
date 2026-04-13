@@ -2,7 +2,7 @@ import heapq
 import math
 
 
-def dijkstra(graph: dict, start: str, goal: str) -> tuple[list[str] | None, float]:
+def dijkstra(graph: dict, start: str, goal: str, _counter=None) -> tuple[list[str] | None, float]:
     if start == goal:
         return [start], 0.0
 
@@ -12,6 +12,8 @@ def dijkstra(graph: dict, start: str, goal: str) -> tuple[list[str] | None, floa
 
     while pq:
         d, node = heapq.heappop(pq)
+        if _counter is not None:
+            _counter[0] += 1
         if d != dist.get(node, math.inf):
             continue
         if node == goal:

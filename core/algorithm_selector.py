@@ -16,9 +16,10 @@ from core.graph_engine import get_adjacency_list, get_unweighted_adjacency
 
 def _run_algorithm(name: str, fn, *args):
     t0 = time.perf_counter()
-    out = fn(*args)
+    counter = [0]
+    out = fn(*args, _counter=counter)
     t1 = time.perf_counter()
-    return out, (t1 - t0) * 1000.0, name
+    return out, (t1 - t0) * 1000.0, name, int(counter[0])
 
 
 def _path_uses_air(G, path: list[str]) -> bool:
@@ -42,19 +43,39 @@ def select_and_run(
     adj_safest = get_adjacency_list(G, "safest", disaster_events, unit_type=unit_type)
 
     runs = []
-    bfs_path, bfs_ms, _ = _run_algorithm("BFS", bfs, adj_unweighted, start, goal)
-    dfs_path, dfs_ms, _ = _run_algorithm("DFS", dfs, adj_unweighted, start, goal)
-    (dij_path, dij_cost), dij_ms, _ = _run_algorithm("Dijkstra", dijkstra, adj_weighted, start, goal)
-    (ast_path, ast_cost), ast_ms, _ = _run_algorithm("A*", astar, adj_safest, start, goal, euclidean_distance, positions)
-    (ucs_path, ucs_cost), ucs_ms, _ = _run_algorithm("UCS", ucs, adj_weighted, start, goal)
+    bfs_path, bfs_ms, _, bfs_explored = _run_algorithm("BFS", bfs, adj_unweighted, start, goal)
+    dfs_path, dfs_ms, _, dfs_explored = _run_algorithm("DFS", dfs, adj_unweighted, start, goal)
+    (dij_path, dij_cost), dij_ms, _, dij_explored = _run_algorithm("Dijkstra", dijkstra, adj_weighted, start, goal)
+    (ast_path, ast_cost), ast_ms, _, ast_explored = _run_algorithm(
+        "A*",
+        astar,
+        adj_safest,
+        start,
+        goal,
+        euclidean_distance,
+        positions,
+    )
+    (ucs_path, ucs_cost), ucs_ms, _, ucs_explored = _run_algorithm("UCS", ucs, adj_weighted, start, goal)
 
     runs.extend(
         [
-            {"algorithm": "BFS", "path": bfs_path or [], "cost": float(len(bfs_path) - 1) if bfs_path else math.inf, "time_ms": bfs_ms},
-            {"algorithm": "DFS", "path": dfs_path or [], "cost": float(len(dfs_path) - 1) if dfs_path else math.inf, "time_ms": dfs_ms},
-            {"algorithm": "Dijkstra", "path": dij_path or [], "cost": float(dij_cost), "time_ms": dij_ms},
-            {"algorithm": "A*", "path": ast_path or [], "cost": float(ast_cost), "time_ms": ast_ms},
-            {"algorithm": "UCS", "path": ucs_path or [], "cost": float(ucs_cost), "time_ms": ucs_ms},
+            {
+                "algorithm": "BFS",
+                "path": bfs_path or [],
+                "cost": float(len(bfs_path) - 1) if bfs_path else math.inf,
+                "time_ms": bfs_ms,
+                "nodes_explored": bfs_explored,
+            },
+            {
+                "algorithm": "DFS",
+                "path": dfs_path or [],
+                "cost": float(len(dfs_path) - 1) if dfs_path else math.inf,
+                "time_ms": dfs_ms,
+                "nodes_explored": dfs_explored,
+            },
+            {"algorithm": "Dijkstra", "path": dij_path or [], "cost": float(dij_cost), "time_ms": dij_ms, "nodes_explored": dij_explored},
+            {"algorithm": "A*", "path": ast_path or [], "cost": float(ast_cost), "time_ms": ast_ms, "nodes_explored": ast_explored},
+            {"algorithm": "UCS", "path": ucs_path or [], "cost": float(ucs_cost), "time_ms": ucs_ms, "nodes_explored": ucs_explored},
         ]
     )
 
@@ -63,7 +84,7 @@ def select_and_run(
         path = run["path"]
         found = len(path) > 0
         path_len = max(0, len(path) - 1) if found else 0
-        nodes_explored = len(path) if found else 0
+        nodes_explored = int(run["nodes_explored"])
         risk_vals = [compute_risk_score(n, disaster_events, G) for n in path] if found else [1.0]
         safety = 1.0 - (sum(risk_vals) / len(risk_vals))
         rows.append(

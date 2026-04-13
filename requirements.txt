@@ -1,7 +1,6 @@
-streamlit
-networkx
-plotly
+pygame
+pygame_gui
 matplotlib
-numpy
-streamlit-option-menu
+networkx
 pandas
+numpy

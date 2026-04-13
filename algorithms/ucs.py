@@ -7,7 +7,7 @@ Time: O((V+E) log V).
 import heapq
 
 
-def ucs(graph: dict, start: str, goal: str) -> tuple[list[str] | None, float]:
+def ucs(graph: dict, start: str, goal: str, _counter=None) -> tuple[list[str] | None, float]:
     # Min-heap: (cost, node, path)
     # explored set, no re-expansion
     if start == goal:
@@ -18,6 +18,8 @@ def ucs(graph: dict, start: str, goal: str) -> tuple[list[str] | None, float]:
 
     while frontier:
         cost, node, path = heapq.heappop(frontier)
+        if _counter is not None:
+            _counter[0] += 1
         if node in explored:
             continue
         explored.add(node)

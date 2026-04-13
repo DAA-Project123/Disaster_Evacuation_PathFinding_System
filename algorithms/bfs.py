@@ -6,7 +6,7 @@ Time: O(V+E), Space: O(V). Optimal for unweighted.
 from collections import deque
 
 
-def bfs(graph: dict, start: str, goal: str) -> list[str] | None:
+def bfs(graph: dict, start: str, goal: str, _counter=None) -> list[str] | None:
     # deque-based BFS, returns path or None
     if start == goal:
         return [start]
@@ -16,6 +16,8 @@ def bfs(graph: dict, start: str, goal: str) -> list[str] | None:
 
     while q:
         node = q.popleft()
+        if _counter is not None:
+            _counter[0] += 1
         for nbr in graph.get(node, []):
             if nbr in parent:
                 continue

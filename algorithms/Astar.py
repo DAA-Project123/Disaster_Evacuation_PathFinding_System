@@ -6,7 +6,7 @@ def euclidean_distance(a: tuple[float, float], b: tuple[float, float]) -> float:
     return math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2)
 
 
-def astar(graph, start, goal, heuristic, positions) -> tuple[list[str] | None, float]:
+def astar(graph, start, goal, heuristic, positions, _counter=None) -> tuple[list[str] | None, float]:
     if start == goal:
         return [start], 0.0
 
@@ -24,6 +24,8 @@ def astar(graph, start, goal, heuristic, positions) -> tuple[list[str] | None, f
 
     while pq:
         _, g, node = heapq.heappop(pq)
+        if _counter is not None:
+            _counter[0] += 1
         if node in closed:
             continue
         closed.add(node)

@@ -55,15 +55,16 @@ def greedy_recommendation(strategy, G, team_node, victim_nodes, disaster_events,
     return str(df.iloc[0]["node_id"])
 
 
-def nearest_team_to_target(G, target_node, available_teams, disaster_events, unit_types) -> dict:
+def nearest_team_to_target(G, target_node, available_units, disaster_events, city_graph_data) -> dict:
+    del city_graph_data
     best = None
-    for team in available_teams:
-        unit_type = unit_types.get(team["unit_id"], "ground")
+    for team in available_units:
+        unit_type = "helicopter" if team.get("unit_type") == "helicopter" else "ground"
         adj = get_adjacency_list(G, "balanced", disaster_events, unit_type=unit_type)
         path, cost = dijkstra(adj, team["current_node"], target_node)
         if not path:
             continue
-        rec = {"team": team, "cost": float(cost), "path": path}
+        rec = {"team": team, "cost": float(cost), "path": path, "unit": team, "unit_id": team.get("unit_id")}
         if best is None or rec["cost"] < best["cost"]:
             best = rec
     return best or {}

@@ -4,7 +4,7 @@ Time: O(V+E), Space: O(V).
 """
 
 
-def dfs(graph: dict, start: str, goal: str) -> list[str] | None:
+def dfs(graph: dict, start: str, goal: str, _counter=None) -> list[str] | None:
     # iterative stack-based
     if start == goal:
         return [start]
@@ -14,6 +14,8 @@ def dfs(graph: dict, start: str, goal: str) -> list[str] | None:
 
     while stack:
         node, path = stack.pop()
+        if _counter is not None:
+            _counter[0] += 1
         for nbr in graph.get(node, []):
             if nbr == goal:
                 return path + [nbr]
