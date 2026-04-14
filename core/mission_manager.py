@@ -18,8 +18,11 @@ from core.data_loader import (
 )
 
 
+_ROOT = Path(__file__).resolve().parent.parent
+
+
 class MissionManager:
-    MISSIONS_FILE = Path("data/active_missions.json")
+    MISSIONS_FILE = _ROOT / "data" / "active_missions.json"
 
     def load(self) -> list[dict]:
         if not self.MISSIONS_FILE.exists():

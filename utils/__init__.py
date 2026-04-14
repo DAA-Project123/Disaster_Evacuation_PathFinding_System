@@ -1,1 +1,1 @@
-"""Utilities for visualization and metrics."""
+"""Utilities — metrics helpers for algorithms and reporting."""

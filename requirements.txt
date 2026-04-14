@@ -1,7 +1,0 @@
-streamlit
-networkx
-plotly
-matplotlib
-numpy
-streamlit-option-menu
-pandas

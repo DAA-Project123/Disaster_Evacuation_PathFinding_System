@@ -5,10 +5,10 @@ import time
 
 import pandas as pd
 
-from algorithms.astar import astar, euclidean_distance
+from algorithms.Astar import astar, euclidean_distance
 from algorithms.bfs import bfs
 from algorithms.dfs import dfs
-from algorithms.dijkstra import dijkstra
+from algorithms.Dijkstra import dijkstra
 from algorithms.ucs import ucs
 from core.disaster_manager import compute_risk_score
 from core.graph_engine import get_adjacency_list, get_unweighted_adjacency

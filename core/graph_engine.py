@@ -105,7 +105,8 @@ def get_adjacency_list(
         else:
             w = base_time
 
-        if _edge_key(u, v) in blocked:
+        live_blocked = bool(data.get("blocked_live", False))
+        if _edge_key(u, v) in blocked or live_blocked:
             w = 999999.0
 
         adj[u].append((v, float(w)))
@@ -124,7 +125,8 @@ def get_unweighted_adjacency(G: nx.Graph, disaster_events: list | None = None, u
     for u, v, data in G.edges(data=True):
         if unit_type == "ground" and bool(data.get("air_only", False)):
             continue
-        if _edge_key(u, v) in blocked:
+        live_blocked = bool(data.get("blocked_live", False))
+        if _edge_key(u, v) in blocked or live_blocked:
             continue
         adj[u].append(v)
         adj[v].append(u)

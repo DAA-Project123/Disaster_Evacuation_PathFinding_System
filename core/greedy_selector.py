@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from algorithms.dijkstra import dijkstra, dijkstra_all_distances
+from algorithms.Dijkstra import dijkstra, dijkstra_all_distances
 from core.graph_engine import get_adjacency_list
 
 INJURY_WEIGHT = {"critical": 10, "high": 7, "medium": 4, "low": 1, "none": 0}
