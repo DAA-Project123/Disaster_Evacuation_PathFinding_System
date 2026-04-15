@@ -1,150 +1,190 @@
-from __future__ import annotations
-
+"""Graph loading and adjacency list management."""
 from typing import Any
-
+import json
 import networkx as nx
 
-from core.disaster_manager import compute_risk_score, get_all_blocked_edges
+
+def load_city_graph(filepath: str) -> dict:
+    """Load city graph JSON from file."""
+    with open(filepath, 'r') as f:
+        return json.load(f)
 
 
-def load_graph(city_graph_data: dict) -> nx.Graph:
+def build_graph(city_graph_data: dict) -> nx.Graph:
     """
-    Build networkx Graph from city_graph.json dict.
+    Build networkx Graph from city_map JSON dict.
     Edge weight = base_travel_time_min by default.
     """
     G = nx.Graph()
     for n in city_graph_data.get("nodes", []):
         G.add_node(
             n["id"],
-            **{
-                "id": n["id"],
-                "name": n.get("name", n["id"]),
-                "type": n.get("type", "intersection"),
-                "x": float(n.get("x", 0.0)),
-                "y": float(n.get("y", 0.0)),
-                "zone": n.get("zone", ""),
-                "elevation": int(n.get("elevation", 0)),
-                "population_density": int(n.get("population_density", 0)),
-                "people_stranded": int(n.get("people_stranded", 0)),
-                "injury_level": n.get("injury_level", "none"),
-                "rescue_cost": int(n.get("rescue_cost", 5)),
-                "survival_chance": float(n.get("survival_chance", 0.6)),
-                "helipad": bool(n.get("helipad", False)),
-            },
+            id=n["id"],
+            display_name=n.get("display_name", n["id"]),
+            type=n.get("type", "intersection"),
+            x=float(n.get("x", 0.0)),
+            y=float(n.get("y", 0.0)),
+            zone=n.get("zone", ""),
+            population_density=int(n.get("population_density", 0)),
+            people_stranded=int(n.get("people_stranded", 0)),
+            people_rescued=int(n.get("people_rescued", 0)),
+            injury_level=n.get("injury_level", "none"),
+            survival_chance=float(n.get("survival_chance", 1.0)),
+            helipad=bool(n.get("helipad", False)),
+            is_safe_zone=bool(n.get("is_safe_zone", False)),
         )
     for e in city_graph_data.get("edges", []):
         u = e["source"]
         v = e["target"]
         G.add_edge(
-            u,
-            v,
+            u, v,
             road_name=e.get("road_name", f"{u}-{v}"),
             distance_km=float(e.get("distance_km", 1.0)),
             base_travel_time_min=float(e.get("base_travel_time_min", 1.0)),
-            capacity=float(e.get("capacity", 500)),
-            road_type=e.get("road_type", "local"),
+            capacity=int(e.get("capacity", 4)),
+            road_type=e.get("road_type", "road"),
             air_only=bool(e.get("air_only", False)),
             bidirectional=bool(e.get("bidirectional", True)),
-            edge_load=float(e.get("edge_load", 0.0)),
+            blocked=bool(e.get("blocked", False)),
         )
     return G
 
 
 def get_positions(city_graph_data: dict) -> dict:
+    """Get node positions as {node_id: (x, y)}."""
     return {n["id"]: (float(n.get("x", 0.0)), float(n.get("y", 0.0))) for n in city_graph_data.get("nodes", [])}
 
 
-def get_node_metadata(G: nx.Graph, node_id: str) -> dict:
-    return dict(G.nodes[node_id])
+def get_node_data(G: nx.Graph, node_id: str) -> dict:
+    """Get node metadata."""
+    if node_id in G.nodes:
+        return dict(G.nodes[node_id])
+    return {}
 
 
-def _edge_key(u: str, v: str) -> tuple[str, str]:
-    return (u, v) if u <= v else (v, u)
-
-
-def get_adjacency_list(
-    G: nx.Graph,
-    mode: str = "fastest",
-    disaster_events: list | None = None,
-    positions: dict | None = None,
-    unit_type: str | None = None,
-) -> dict:
-    """
-    Convert nx.Graph to adjacency list for algorithm consumption.
-
-    mode="fastest":  weight = base_travel_time_min * congestion_factor
-    mode="safest":   weight = base_travel_time_min + (risk_score * 100)
-    mode="balanced": weight = 0.5*time + 0.3*risk*50 + 0.2*distance*10
-    Blocked edges (from disaster_events): weight = 999999 (passable but penalized heavily)
-    Return format: {node_id: [(neighbor_id, weight), ...]}
-    """
-    events = disaster_events or []
-    blocked = get_all_blocked_edges(events)
-
-    # crude congestion: edge_load/capacity. edge_load defaults to 0; pages can mutate if desired.
-    adj: dict[str, list[tuple[str, float]]] = {n: [] for n in G.nodes}
-    for u, v, data in G.edges(data=True):
-        if unit_type == "ground" and bool(data.get("air_only", False)):
-            continue
-        base_time = float(data.get("base_travel_time_min", 1.0))
-        distance = float(data.get("distance_km", 1.0))
-        capacity = float(data.get("capacity", 500.0))
-        load = float(data.get("edge_load", 0.0))
-        congestion_factor = 1.0 + min(1.5, (load / capacity) if capacity > 0 else 0.0)
-
-        risk_u = compute_risk_score(u, events, G)
-        risk_v = compute_risk_score(v, events, G)
-        risk = (risk_u + risk_v) / 2.0
-
-        if mode == "fastest":
-            w = base_time * congestion_factor
-        elif mode == "safest":
-            w = base_time + (risk * 100.0)
-        elif mode == "balanced":
-            w = 0.5 * base_time + 0.3 * risk * 50.0 + 0.2 * distance * 10.0
-        else:
-            w = base_time
-
-        if _edge_key(u, v) in blocked:
-            w = 999999.0
-
-        adj[u].append((v, float(w)))
-        adj[v].append((u, float(w)))
-
-    return adj
-
-
-def get_unweighted_adjacency(G: nx.Graph, disaster_events: list | None = None, unit_type: str | None = None) -> dict:
-    """
-    For BFS/DFS: {node_id: [neighbor_id, ...]} skipping blocked/unit-incompatible edges.
-    """
-    events = disaster_events or []
-    blocked = get_all_blocked_edges(events)
-    adj: dict[str, list[str]] = {n: [] for n in G.nodes}
-    for u, v, data in G.edges(data=True):
-        if unit_type == "ground" and bool(data.get("air_only", False)):
-            continue
-        if _edge_key(u, v) in blocked:
-            continue
-        adj[u].append(v)
-        adj[v].append(u)
-    return adj
-
-
-def get_edge_attrs(G: nx.Graph, u: str, v: str) -> dict[str, Any]:
+def get_edge_data(G: nx.Graph, u: str, v: str) -> dict:
+    """Get edge metadata."""
     if G.has_edge(u, v):
         return dict(G.edges[u, v])
     return {}
 
 
-def get_edge_distance_km(G: nx.Graph, u: str, v: str) -> float:
-    return float(get_edge_attrs(G, u, v).get("distance_km", 0.0))
+def get_adjacency_list_unweighted(G: nx.Graph, blocked_edges: set = None, unit_type: str = "ground") -> dict:
+    """
+    Get unweighted adjacency list for BFS/DFS.
+    
+    Args:
+        G: NetworkX graph
+        blocked_edges: Set of (u, v) tuples representing blocked roads
+        unit_type: "ground" (no air edges), "helicopter" (all edges), "mountain_rescue" (blocked edges with penalty)
+    
+    Returns:
+        dict: {node_id: [neighbor_id, ...]}
+    """
+    blocked = blocked_edges or set()
+    adj = {n: [] for n in G.nodes}
+    
+    for u, v, data in G.edges(data=True):
+        # Skip blocked edges for all except mountain_rescue
+        if unit_type != "mountain_rescue":
+            if (u, v) in blocked or (v, u) in blocked:
+                continue
+        
+        # Ground units can't use air_only edges
+        if unit_type == "ground" and data.get("air_only", False):
+            continue
+        
+        adj[u].append(v)
+        adj[v].append(u)
+    
+    return adj
 
 
-def get_edge_time_min(G: nx.Graph, u: str, v: str) -> float:
-    return float(get_edge_attrs(G, u, v).get("base_travel_time_min", 0.0))
+def get_adjacency_list_weighted(G: nx.Graph, blocked_edges: set = None, unit_type: str = "ground") -> dict:
+    """
+    Get weighted adjacency list for Dijkstra/A*.
+    Weight is base_travel_time_min.
+    
+    Args:
+        G: NetworkX graph
+        blocked_edges: Set of (u, v) tuples representing blocked roads
+        unit_type: "ground" (no air edges), "helicopter" (all edges), "mountain_rescue" (blocked edges * 1.5)
+    
+    Returns:
+        dict: {node_id: [(neighbor_id, weight), ...]}
+    """
+    blocked = blocked_edges or set()
+    adj = {n: [] for n in G.nodes}
+    
+    for u, v, data in G.edges(data=True):
+        base_time = float(data.get("base_travel_time_min", 1.0))
+        
+        # Check if blocked
+        is_blocked = (u, v) in blocked or (v, u) in blocked
+        
+        if is_blocked:
+            if unit_type == "mountain_rescue":
+                # Mountain rescue can traverse at 1.5x penalty
+                weight = base_time * 1.5
+            else:
+                # Other units cannot use blocked edges
+                continue
+        else:
+            weight = base_time
+        
+        # Ground units can't use air_only edges
+        if unit_type == "ground" and data.get("air_only", False):
+            continue
+        
+        adj[u].append((v, weight))
+        adj[v].append((u, weight))
+    
+    return adj
 
 
-def get_edge_capacity(G: nx.Graph, u: str, v: str) -> float:
-    return float(get_edge_attrs(G, u, v).get("capacity", 1.0))
+def get_safe_zones(G: nx.Graph) -> list:
+    """Return list of safe zone node IDs."""
+    return [n for n in G.nodes if G.nodes[n].get("is_safe_zone", False)]
 
+
+def get_nodes_with_disaster(city_graph_data: dict) -> list:
+    """Return list of node dicts where people_stranded > 0."""
+    return [n for n in city_graph_data.get("nodes", []) if n.get("people_stranded", 0) > 0]
+
+
+def update_node_stranded(city_graph_data: dict, node_id: str, count: int):
+    """Update people_stranded count for a node."""
+    for n in city_graph_data.get("nodes", []):
+        if n["id"] == node_id:
+            n["people_stranded"] = count
+            break
+
+
+def update_node_rescued(city_graph_data: dict, node_id: str, count: int):
+    """Update people_rescued count for a node."""
+    for n in city_graph_data.get("nodes", []):
+        if n["id"] == node_id:
+            n["people_rescued"] = count
+            n["people_stranded"] = 0
+            break
+
+
+def save_city_graph(city_graph_data: dict, filepath: str):
+    """Save city graph to JSON file."""
+    with open(filepath, 'w') as f:
+        json.dump(city_graph_data, f, indent=2)
+
+
+def get_all_edges_list(city_graph_data: dict) -> list:
+    """Get list of all edges with full data."""
+    return city_graph_data.get("edges", [])
+
+
+def get_blocked_edges_from_data(city_graph_data: dict) -> set:
+    """Get set of blocked edges from city data."""
+    blocked = set()
+    for e in city_graph_data.get("edges", []):
+        if e.get("blocked", False):
+            blocked.add((e["source"], e["target"]))
+            blocked.add((e["target"], e["source"]))
+    return blocked

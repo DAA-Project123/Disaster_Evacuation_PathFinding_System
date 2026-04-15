@@ -1,266 +1,428 @@
-from __future__ import annotations
-
+"""All Plotly map rendering functions."""
 import plotly.graph_objects as go
+import networkx as nx
+from typing import Dict, List, Optional, Tuple, Any
 
 
-TYPE_STYLES = {
-    "safe_zone": {"color": "#2ecc71", "symbol": "circle", "size": 18},
-    "hospital": {"color": "#4f8ef7", "symbol": "circle", "size": 14},
-    "shelter": {"color": "#9b59b6", "symbol": "circle", "size": 14},
-    "bridge": {"color": "#f39c12", "symbol": "diamond", "size": 14},
-    "intersection": {"color": "#9aa0aa", "symbol": "circle", "size": 10},
+# Node colors by type
+NODE_COLORS = {
+    "safe_zone": "#2ecc71",  # Green
+    "hospital": "#3498db",  # Blue
+    "shelter": "#f39c12",  # Orange
+    "intersection": "#95a5a6",  # Gray
+    "bridge": "#8e44ad",  # Purple
 }
+
+DISASTER_COLOR = "#e74c3c"  # Red
+RESCUED_COLOR = "#27ae60"  # Dark green
+CURRENT_MISSION_COLOR = "#1e90ff"  # Bright blue
 
 
 def build_city_map(
-    city_graph_data,
-    highlight_paths=None,
-    step_annotations=None,
-    blocked_edges=None,
-    agent_positions=None,
-    node_people=None,
-    safe_zone_occupancy=None,
-    isolated_nodes=None,
-    show_labels=True,
+    G: nx.Graph,
+    positions: Dict[str, Tuple[float, float]],
+    city_graph_data: Dict,
+    highlight_paths: Optional[List[Dict]] = None,
+    step_annotations: Optional[List[Dict]] = None,
+    blocked_edges: Optional[set] = None,
+    show_mst: bool = False,
+    mst_edges: Optional[List[Tuple]] = None,
+    team_positions: Optional[Dict[str, str]] = None,
+    target_node: Optional[str] = None,
+    start_node: Optional[str] = None,
+    height: int = 500
 ) -> go.Figure:
-    nodes = {n["id"]: n for n in city_graph_data.get("nodes", [])}
-    positions = {nid: (float(n.get("x", 0.0)), float(n.get("y", 0.0))) for nid, n in nodes.items()}
-    edge_meta = {}
-    for e in city_graph_data.get("edges", []):
-        edge_meta[tuple(sorted((e["source"], e["target"])))] = e
-    blocked = {tuple(sorted((u, v))) for u, v in (blocked_edges or [])}
-
+    """
+    Build a comprehensive city map visualization.
+    
+    Map rendering order (bottom to top):
+      1. All road edges (gray, solid, thin)
+      2. MST edges if show_mst (orange, thin, behind)
+      3. Blocked edges (red, dashed)
+      4. Air edges (blue, dashed)
+      5. Highlighted paths with step annotations
+      6. Node markers (colored by type and state)
+      7. Step number text on path edges
+      8. Directional arrows on recommended path
+      9. Team markers (star shape)
+      10. Legend
+    """
     fig = go.Figure()
-    for e in city_graph_data.get("edges", []):
-        u, v = e["source"], e["target"]
+    
+    # 1. All road edges (gray, solid, thin)
+    road_x, road_y = [], []
+    for u, v, data in G.edges(data=True):
+        if data.get("air_only", False):
+            continue  # Air edges drawn separately
+        if blocked_edges and ((u, v) in blocked_edges or (v, u) in blocked_edges):
+            continue  # Blocked edges drawn separately
+        
         x0, y0 = positions[u]
         x1, y1 = positions[v]
-        key = tuple(sorted((u, v)))
-        is_air = bool(e.get("air_only", False) or e.get("road_type") == "air")
-        color = "#4f8ef7" if is_air else "rgba(180,180,180,0.55)"
-        dash = "dash" if is_air else "solid"
-        if key in blocked:
-            color = "#e74c3c"
-            dash = "dash"
-
-        fig.add_trace(
-            go.Scatter(
-                x=[x0, x1],
-                y=[y0, y1],
-                mode="lines",
-                line=dict(color=color, width=1.5 if is_air else 1, dash=dash),
-                hoverinfo="text",
-                hovertext=f"{e.get('road_name','Road')}<br>{u} ↔ {v}<br>{float(e.get('distance_km',0)):.2f} km • {float(e.get('base_travel_time_min',0)):.0f} min",
-                showlegend=False,
-            )
-        )
-
-    if highlight_paths:
-        for p in highlight_paths:
-            path = p.get("path", [])
-            color = p.get("color", "#2ecc71")
-            width = int(p.get("width", 3))
-            label = p.get("label", "Path")
-            dash = p.get("dash", "solid")
-            show_steps = bool(p.get("show_steps", False))
-            opacity = float(p.get("opacity", 1.0))
-            for i in range(len(path) - 1):
-                u, v = path[i], path[i + 1]
-                if u not in positions or v not in positions:
-                    continue
+        road_x.extend([x0, x1, None])
+        road_y.extend([y0, y1, None])
+    
+    if road_x:
+        fig.add_trace(go.Scatter(
+            x=road_x, y=road_y,
+            mode='lines',
+            line=dict(color='#666666', width=1),
+            hoverinfo='skip',
+            showlegend=True,
+            name='Road'
+        ))
+    
+    # 2. MST edges if show_mst (orange, thin, behind)
+    if show_mst and mst_edges:
+        mst_x, mst_y = [], []
+        for u, v, w in mst_edges:
+            if u in positions and v in positions:
                 x0, y0 = positions[u]
                 x1, y1 = positions[v]
-                fig.add_trace(
-                    go.Scatter(
-                        x=[x0, x1],
-                        y=[y0, y1],
-                        mode="lines",
-                        line=dict(color=color, width=width, dash=dash),
-                        opacity=opacity,
-                        hoverinfo="skip",
-                        showlegend=False,
-                    )
-                )
-                fig.add_annotation(
-                    x=x1,
-                    y=y1,
-                    ax=x0,
-                    ay=y0,
-                    xref="x",
-                    yref="y",
-                    axref="x",
-                    ayref="y",
-                    text="",
-                    showarrow=True,
-                    arrowhead=3,
-                    arrowsize=1,
-                    arrowwidth=1.2,
-                    arrowcolor=color,
-                )
-                if show_steps:
-                    mx, my = (x0 + x1) / 2.0, (y0 + y1) / 2.0
-                    fig.add_annotation(
-                        x=mx,
-                        y=my,
-                        text=str(i + 1),
-                        showarrow=False,
-                        font=dict(size=10, color="#ffffff"),
-                        bgcolor=color,
-                        opacity=0.9,
-                    )
-            fig.add_shape(type="line", x0=0, y0=0, x1=0.02, y1=0, xref="paper", yref="paper")
-            fig.add_annotation(
-                x=0.02,
-                y=0.03 + 0.03 * (highlight_paths.index(p)),
-                xref="paper",
-                yref="paper",
-                text=f"<span style='color:{color};'>━━</span> {label}",
-                showarrow=False,
-                xanchor="left",
-                yanchor="bottom",
-            )
-
-    xs, ys, sizes, colors, symbols, hovers, texts = [], [], [], [], [], [], []
-    for nid, n in nodes.items():
-        x, y = positions[nid]
-        nt = n.get("type", "intersection")
-        style = TYPE_STYLES.get(nt, TYPE_STYLES["intersection"])
-        base_size = float(style["size"])
-        if node_people is not None:
-            p = int(node_people.get(nid, int(n.get("people_stranded", 0))))
-            base_size = max(base_size, 8 + min(26, (p / 25.0)))
-        xs.append(x)
-        ys.append(y)
-        sizes.append(base_size)
-        colors.append(style["color"])
-        symbols.append(style["symbol"])
-        hovers.append(f"<b>{n.get('name', nid)}</b><br>Type: {nt}<br>People stranded: {int(n.get('people_stranded', 0))}")
-        texts.append(nid if show_labels else "")
-
-    fig.add_trace(
-        go.Scatter(
-            x=xs,
-            y=ys,
-            mode="markers+text" if show_labels else "markers",
-            text=texts,
-            textposition="top center",
-            marker=dict(size=sizes, color=colors, symbol=symbols, opacity=0.95),
-            hoverinfo="text",
-            hovertext=hovers,
-            showlegend=False,
-        )
-    )
-
-    for nid, n in nodes.items():
-        if not n.get("helipad"):
-            continue
-        x, y = positions[nid]
-        fig.add_trace(
-            go.Scatter(
-                x=[x],
-                y=[y],
-                mode="markers",
-                marker=dict(symbol="square", size=7, color="#ffffff", line=dict(color="#111111", width=1)),
-                hoverinfo="skip",
-                showlegend=False,
-            )
-        )
-
-    if agent_positions:
-        ax, ay, acol, ahover, asymbols, alabels = [], [], [], [], [], []
-        for unit_id, info in agent_positions.items():
-            node_id = info.get("node_id")
-            color = info.get("color", "#4f8ef7")
-            mode = info.get("mode", "ground")
-            if node_id not in positions:
+                mst_x.extend([x0, x1, None])
+                mst_y.extend([y0, y1, None])
+        
+        if mst_x:
+            fig.add_trace(go.Scatter(
+                x=mst_x, y=mst_y,
+                mode='lines',
+                line=dict(color='#ff8c00', width=1),
+                hoverinfo='skip',
+                showlegend=True,
+                name='MST Edge'
+            ))
+    
+    # 3. Blocked edges (red, dashed)
+    if blocked_edges:
+        blocked_x, blocked_y = [], []
+        for u, v in blocked_edges:
+            if G.has_edge(u, v) and u in positions and v in positions:
+                x0, y0 = positions[u]
+                x1, y1 = positions[v]
+                blocked_x.extend([x0, x1, None])
+                blocked_y.extend([y0, y1, None])
+        
+        if blocked_x:
+            fig.add_trace(go.Scatter(
+                x=blocked_x, y=blocked_y,
+                mode='lines',
+                line=dict(color='#e74c3c', width=2, dash='dash'),
+                hoverinfo='skip',
+                showlegend=True,
+                name='Blocked Road'
+            ))
+    
+    # 4. Air edges (blue, dashed)
+    air_x, air_y = [], []
+    for u, v, data in G.edges(data=True):
+        if data.get("air_only", False):
+            if u in positions and v in positions:
+                x0, y0 = positions[u]
+                x1, y1 = positions[v]
+                air_x.extend([x0, x1, None])
+                air_y.extend([y0, y1, None])
+    
+    if air_x:
+        fig.add_trace(go.Scatter(
+            x=air_x, y=air_y,
+            mode='lines',
+            line=dict(color='#3498db', width=1.5, dash='dash'),
+            hoverinfo='skip',
+            showlegend=True,
+            name='Air Corridor'
+        ))
+    
+    # 5. Highlighted paths
+    if highlight_paths:
+        for idx, path_info in enumerate(highlight_paths):
+            path = path_info.get("path", [])
+            color = path_info.get("color", "#2ecc71")
+            width = path_info.get("width", 2)
+            dash = path_info.get("dash", "solid")
+            label = path_info.get("label", f"Path {idx+1}")
+            show_steps = path_info.get("show_steps", False)
+            
+            if len(path) < 2:
                 continue
-            x, y = positions[node_id]
-            ax.append(x)
-            ay.append(y)
-            acol.append(color)
-            asymbols.append("diamond" if mode == "air" else "star")
-            alabels.append("AIR" if mode == "air" else "")
-            ahover.append(f"{unit_id}<br>At: {nodes.get(node_id, {}).get('name', node_id)}")
-
-        if ax:
-            fig.add_trace(
-                go.Scatter(
-                    x=ax,
-                    y=ay,
-                    mode="markers+text",
-                    text=alabels,
-                    textposition="middle right",
-                    marker=dict(symbol=asymbols, size=16, color=acol, line=dict(color="#ffffff", width=1)),
-                    hoverinfo="text",
-                    hovertext=ahover,
-                    showlegend=False,
-                )
-            )
-
+            
+            path_x, path_y = [], []
+            for i in range(len(path) - 1):
+                u, v = path[i], path[i+1]
+                if u in positions and v in positions:
+                    x0, y0 = positions[u]
+                    x1, y1 = positions[v]
+                    path_x.extend([x0, x1, None])
+                    path_y.extend([y0, y1, None])
+                    
+                    # Add step annotations if requested
+                    if show_steps:
+                        mid_x, mid_y = (x0 + x1) / 2, (y0 + y1) / 2
+                        edge_data = G.get_edge_data(u, v) if G.has_edge(u, v) else {}
+                        dist = edge_data.get("distance_km", 0)
+                        
+                        fig.add_annotation(
+                            x=mid_x, y=mid_y,
+                            text=f"{i+1}",
+                            showarrow=False,
+                            font=dict(size=10, color=color),
+                            bgcolor='rgba(0,0,0,0.7)',
+                            bordercolor=color,
+                            borderwidth=1,
+                            borderpad=2
+                        )
+            
+            if path_x:
+                fig.add_trace(go.Scatter(
+                    x=path_x, y=path_y,
+                    mode='lines',
+                    line=dict(color=color, width=width, dash=dash),
+                    hoverinfo='skip',
+                    showlegend=idx == 0,  # Only show first path in legend
+                    name=label if idx == 0 else None
+                ))
+            
+            # Add directional arrows for first (recommended) path
+            if idx == 0:
+                for i in range(len(path) - 1):
+                    u, v = path[i], path[i+1]
+                    if u in positions and v in positions:
+                        x0, y0 = positions[u]
+                        x1, y1 = positions[v]
+                        
+                        fig.add_annotation(
+                            x=x1, y=y1,
+                            ax=x0, ay=y0,
+                            xref='x', yref='y',
+                            axref='x', ayref='y',
+                            showarrow=True,
+                            arrowhead=2,
+                            arrowsize=1,
+                            arrowwidth=1.5,
+                            arrowcolor=color
+                        )
+    
+    # 6. Node markers
+    node_x, node_y, node_colors, node_sizes, node_symbols, node_texts, hover_texts = [], [], [], [], [], [], []
+    
+    for node_id in G.nodes():
+        node_data = G.nodes[node_id]
+        x, y = positions[node_id]
+        
+        # Determine node color based on state
+        people_stranded = node_data.get("people_stranded", 0)
+        people_rescued = node_data.get("people_rescued", 0)
+        node_type = node_data.get("type", "intersection")
+        is_safe_zone = node_data.get("is_safe_zone", False)
+        
+        if people_stranded > 0:
+            color = DISASTER_COLOR  # Red for disaster
+            size = 20
+            symbol = "circle"
+        elif people_rescued > 0:
+            color = RESCUED_COLOR  # Green for rescued
+            size = 18
+            symbol = "circle-dot"
+        elif is_safe_zone:
+            color = NODE_COLORS.get("safe_zone", "#2ecc71")
+            size = 18
+            symbol = "circle"
+        else:
+            color = NODE_COLORS.get(node_type, "#95a5a6")
+            size = 12 if node_type == "intersection" else 14
+            symbol = "circle"
+        
+        # Special markers
+        if node_id == target_node:
+            size = 24
+            symbol = "circle"
+        elif node_id == start_node:
+            size = 22
+            symbol = "circle"
+        
+        node_x.append(x)
+        node_y.append(y)
+        node_colors.append(color)
+        node_sizes.append(size)
+        node_symbols.append(symbol)
+        node_texts.append(node_id)
+        
+        display_name = node_data.get("display_name", node_id)
+        hover_text = f"{display_name}<br>Type: {node_type}<br>People Stranded: {people_stranded}<br>People Rescued: {people_rescued}"
+        if node_data.get("helipad"):
+            hover_text += "<br>Helipad: Yes"
+        hover_texts.append(hover_text)
+    
+    if node_x:
+        fig.add_trace(go.Scatter(
+            x=node_x, y=node_y,
+            mode='markers+text',
+            marker=dict(
+                size=node_sizes,
+                color=node_colors,
+                symbol=node_symbols,
+                line=dict(width=2, color='white')
+            ),
+            text=node_texts,
+            textposition='top center',
+            textfont=dict(size=10, color='white'),
+            hoverinfo='text',
+            hovertext=hover_texts,
+            showlegend=False
+        ))
+    
+    # 7. Step annotations
     if step_annotations:
-        for item in step_annotations:
-            node_id = item["node_id"]
+        for anno in step_annotations:
+            node_id = anno.get("node_id")
             if node_id not in positions:
                 continue
+            
             x, y = positions[node_id]
-            visited = bool(item.get("visited"))
-            is_current = bool(item.get("current"))
-            fill = "#1f6f43" if visited else "#2b2f3a"
-            if is_current:
-                fill = "#2d7ff9"
-            fig.add_trace(
-                go.Scatter(
-                    x=[x],
-                    y=[y],
-                    mode="markers+text",
-                    text=[str(item.get("step_number", 0))],
-                    textposition="middle center",
-                    marker=dict(
-                        color=fill,
-                        size=20 if is_current else 16,
-                        symbol="circle",
-                        line=dict(color="#ffffff" if is_current else "#6f778a", width=3 if is_current else 1),
-                    ),
-                    showlegend=False,
-                    hoverinfo="skip",
-                )
-            )
-
-    if isolated_nodes:
-        for nid in isolated_nodes:
-            if nid not in positions:
-                continue
-            x, y = positions[nid]
-            fig.add_shape(
-                type="circle",
-                xref="x",
-                yref="y",
-                x0=x - 0.25,
-                y0=y - 0.25,
-                x1=x + 0.25,
-                y1=y + 0.25,
-                line=dict(color="#f39c12", width=2, dash="dot"),
-            )
-
+            step_num = anno.get("step_number", 0)
+            visited = anno.get("visited", False)
+            current = anno.get("current", False)
+            
+            if current:
+                fill_color = CURRENT_MISSION_COLOR
+                border_color = "white"
+                border_width = 3
+                size = 24
+            elif visited:
+                fill_color = "#2d6a4f"
+                border_color = "white"
+                border_width = 1
+                size = 18
+            else:
+                fill_color = "#333333"
+                border_color = "#888888"
+                border_width = 1
+                size = 16
+            
+            fig.add_trace(go.Scatter(
+                x=[x], y=[y],
+                mode='markers+text',
+                marker=dict(
+                    size=size,
+                    color=fill_color,
+                    symbol='circle',
+                    line=dict(width=border_width, color=border_color)
+                ),
+                text=[str(step_num)],
+                textposition='middle center',
+                textfont=dict(size=12, color='white', weight='bold'),
+                hoverinfo='skip',
+                showlegend=False
+            ))
+    
+    # 8. Team markers (star shape)
+    if team_positions:
+        team_x, team_y, team_colors, team_names = [], [], [], []
+        team_colors_map = {
+            "U001": "#3498db",  # Alpha-1: Blue
+            "U002": "#9b59b6",  # Eagle-1: Purple
+            "U003": "#2c3e50",  # Shield-1: Dark
+            "U004": "#e74c3c",  # Blaze-1: Red
+            "U005": "#f39c12",  # Peak-1: Orange
+        }
+        
+        for team_id, node_id in team_positions.items():
+            if node_id in positions:
+                x, y = positions[node_id]
+                team_x.append(x)
+                team_y.append(y)
+                team_colors.append(team_colors_map.get(team_id, "#ffffff"))
+                team_names.append(team_id)
+        
+        if team_x:
+            fig.add_trace(go.Scatter(
+                x=team_x, y=team_y,
+                mode='markers',
+                marker=dict(
+                    size=18,
+                    color=team_colors,
+                    symbol='star',
+                    line=dict(width=2, color='white')
+                ),
+                text=team_names,
+                hoverinfo='text',
+                hovertext=[f"Team: {name}" for name in team_names],
+                showlegend=False
+            ))
+    
+    # 9. Legend (annotations at bottom-right)
     fig.add_annotation(
-        x=0.99,
-        y=0.02,
-        xref="paper",
-        yref="paper",
-        text="Road: <span style='color:#b4b4b4;'>━━</span><br>Air Corridor: <span style='color:#4f8ef7;'>- - -</span><br>Blocked Road: <span style='color:#e74c3c;'>- - -</span>",
+        x=0.98, y=0.02,
+        xref='paper', yref='paper',
+        text="Road: <span style='color:#666666;'>━━</span><br>Air Corridor: <span style='color:#3498db;'>- - -</span><br>Blocked Road: <span style='color:#e74c3c;'>- - -</span><br>MST Edge: <span style='color:#ff8c00;'>━━</span><br>Recommended Path: <span style='color:#2ecc71;'>━━</span>",
         showarrow=False,
-        xanchor="right",
-        yanchor="bottom",
+        xanchor='right',
+        yanchor='bottom',
+        font=dict(size=10, color='white'),
+        bgcolor='rgba(0,0,0,0.5)',
+        borderpad=4
     )
-
+    
+    # Layout
     fig.update_layout(
-        template="plotly_dark",
+        template='plotly_dark',
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
         margin=dict(l=10, r=10, t=10, b=10),
+        height=height,
+        showlegend=False,
         xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, scaleanchor="x", scaleratio=1),
-        paper_bgcolor="#0f1117",
-        plot_bgcolor="#0f1117",
-        height=560,
+        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, scaleanchor='x', scaleratio=1)
     )
+    
     return fig
 
+
+def create_mini_mission_map(G, positions, mission, height=300):
+    """Create a small map for a single mission."""
+    path = mission.get("path_to_target", []) if mission.get("phase") == "outbound" else mission.get("return_path", [])
+    current_step = mission.get("current_step", 0)
+    target = mission.get("target_node")
+    base = mission.get("base_node")
+    
+    highlight_paths = []
+    if path:
+        # Build color-coded path segments
+        colored_path = []
+        colors = []
+        
+        for i, node in enumerate(path):
+            if i < current_step:
+                colors.append("#2d6a4f")  # Visited (green)
+            elif i == current_step:
+                colors.append("#1e90ff")  # Current (blue)
+            else:
+                colors.append("#666666")  # Future (gray)
+        
+        highlight_paths.append({
+            "path": path,
+            "color": "#2ecc71",
+            "width": 3,
+            "label": "Mission Path",
+            "show_steps": True
+        })
+    
+    step_annotations = []
+    for i, node in enumerate(path):
+        step_annotations.append({
+            "node_id": node,
+            "step_number": i,
+            "visited": i < current_step,
+            "current": i == current_step
+        })
+    
+    team_positions = {mission["team_id"]: path[current_step] if current_step < len(path) else base}
+    
+    return build_city_map(
+        G, positions, {},
+        highlight_paths=highlight_paths,
+        step_annotations=step_annotations,
+        team_positions=team_positions,
+        target_node=target,
+        start_node=base,
+        height=height
+    )

@@ -1,11 +1,93 @@
 [
-  { "unit_id": "U001", "name": "Alpha-1", "unit_type": "ambulance", "base_node": "N003", "capacity": 10, "speed_kmph": 60, "icon": "", "fuel_capacity": 100, "fuel_remaining": 100, "medical_kits": 5, "status": "available", "current_node": "N003", "total_rescued": 0, "dispatches": [] },
-  { "unit_id": "U002", "name": "Alpha-2", "unit_type": "ambulance", "base_node": "N016", "capacity": 10, "speed_kmph": 60, "icon": "", "fuel_capacity": 100, "fuel_remaining": 100, "medical_kits": 5, "status": "available", "current_node": "N016", "total_rescued": 0, "dispatches": [] },
-  { "unit_id": "U003", "name": "Alpha-3", "unit_type": "ambulance", "base_node": "N025", "capacity": 10, "speed_kmph": 60, "icon": "", "fuel_capacity": 100, "fuel_remaining": 100, "medical_kits": 5, "status": "available", "current_node": "N025", "total_rescued": 0, "dispatches": [] },
-  { "unit_id": "U004", "name": "Bravo-1", "unit_type": "fire_truck", "base_node": "N006", "capacity": 5, "speed_kmph": 50, "icon": "", "fuel_capacity": 100, "fuel_remaining": 100, "medical_kits": 5, "status": "available", "current_node": "N006", "total_rescued": 0, "dispatches": [] },
-  { "unit_id": "U005", "name": "Bravo-2", "unit_type": "fire_truck", "base_node": "N019", "capacity": 5, "speed_kmph": 50, "icon": "", "fuel_capacity": 100, "fuel_remaining": 100, "medical_kits": 5, "status": "available", "current_node": "N019", "total_rescued": 0, "dispatches": [] },
-  { "unit_id": "U006", "name": "Bravo-3", "unit_type": "fire_truck", "base_node": "N029", "capacity": 5, "speed_kmph": 50, "icon": "", "fuel_capacity": 100, "fuel_remaining": 100, "medical_kits": 5, "status": "available", "current_node": "N029", "total_rescued": 0, "dispatches": [] },
-  { "unit_id": "U007", "name": "Charlie-1", "unit_type": "police", "base_node": "N009", "capacity": 8, "speed_kmph": 70, "icon": "", "fuel_capacity": 100, "fuel_remaining": 100, "medical_kits": 5, "status": "available", "current_node": "N009", "total_rescued": 0, "dispatches": [] },
-  { "unit_id": "U008", "name": "Charlie-2", "unit_type": "police", "base_node": "N022", "capacity": 8, "speed_kmph": 70, "icon": "", "fuel_capacity": 100, "fuel_remaining": 100, "medical_kits": 5, "status": "available", "current_node": "N022", "total_rescued": 0, "dispatches": [] }
+  {
+    "id": "U001",
+    "name": "Alpha-1",
+    "type": "ambulance",
+    "carries": [
+      "medical_kits",
+      "stretchers"
+    ],
+    "fuel_capacity": 100,
+    "fuel_remaining": 100,
+    "medical_kits": 10,
+    "capacity": 6,
+    "base_node": "A1",
+    "current_node": "A1",
+    "status": "dispatched",
+    "people_rescued_total": 0,
+    "missions_completed": 0
+  },
+  {
+    "id": "U002",
+    "name": "Eagle-1",
+    "type": "helicopter",
+    "carries": [
+      "medical_kits"
+    ],
+    "fuel_capacity": 80,
+    "fuel_remaining": 80,
+    "medical_kits": 5,
+    "capacity": 4,
+    "base_node": "A1",
+    "current_node": "A1",
+    "status": "available",
+    "people_rescued_total": 0,
+    "missions_completed": 0
+  },
+  {
+    "id": "U003",
+    "name": "Shield-1",
+    "type": "police",
+    "carries": [
+      "barriers",
+      "rescue_tools"
+    ],
+    "fuel_capacity": 100,
+    "fuel_remaining": 100,
+    "rescue_tools": 8,
+    "capacity": 5,
+    "base_node": "A1",
+    "current_node": "A1",
+    "status": "dispatched",
+    "people_rescued_total": 0,
+    "missions_completed": 0
+  },
+  {
+    "id": "U004",
+    "name": "Blaze-1",
+    "type": "fire_fighter",
+    "carries": [
+      "fire_suppressant",
+      "medical_kits"
+    ],
+    "fuel_capacity": 120,
+    "fuel_remaining": 120,
+    "fire_suppressant": 15,
+    "medical_kits": 4,
+    "capacity": 5,
+    "base_node": "B1",
+    "current_node": "B1",
+    "status": "dispatched",
+    "people_rescued_total": 0,
+    "missions_completed": 0
+  },
+  {
+    "id": "U005",
+    "name": "Peak-1",
+    "type": "mountain_rescue",
+    "carries": [
+      "rope_kits",
+      "medical_kits"
+    ],
+    "fuel_capacity": 90,
+    "fuel_remaining": 90,
+    "rope_kits": 6,
+    "medical_kits": 3,
+    "capacity": 4,
+    "base_node": "B1",
+    "current_node": "B1",
+    "status": "dispatched",
+    "people_rescued_total": 0,
+    "missions_completed": 0
+  }
 ]
-

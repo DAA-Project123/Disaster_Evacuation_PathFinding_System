@@ -1,206 +1,217 @@
-from __future__ import annotations
-
-from datetime import datetime
-
-import pandas as pd
+"""Resource Hub page - Resource distribution from main hub."""
 import streamlit as st
+import pandas as pd
+import json
+from datetime import datetime
+from pathlib import Path
 
-from algorithms.dijkstra import dijkstra
-from core.data_loader import load_city_graph, load_safe_zones
-from core.graph_engine import load_graph, get_adjacency_list, get_edge_distance_km
-from core.knapsack import knapsack_supply
-from core.resource_manager import ResourceManager
-
-
-def _progress_color(frac: float) -> str:
-    if frac < 0.2:
-        return "#e74c3c"
-    if frac < 0.5:
-        return "#f39c12"
-    return "#2ecc71"
+from core.graph_engine import load_city_graph, build_graph, get_positions
+from utils.visualizer import build_city_map
 
 
 def render():
-    active_city = st.session_state.get("active_city", "Veridian City")
-    rm = ResourceManager()
-    data = rm.load()
-    inv_df = rm.get_inventory()
-    inv = inv_df.to_dict(orient="records")
-    summary = rm.get_hub_summary()
-    safe_zones = load_safe_zones(active_city)
-
-    hub = data.get("hub", {})
-    st.markdown(f'<div style="font-size:2rem;font-weight:700;color:#ffffff;">Central Resource Hub - {active_city}</div>', unsafe_allow_html=True)
-    st.markdown(
-        f"<div style='color:#a0a8c0;'>{hub.get('name','')} • {hub.get('location','')}</div>",
-        unsafe_allow_html=True,
-    )
-
-    # STATS ROW
-    c1, c2, c3, c4, c5 = st.columns(5)
-    c1.metric("Total Available", int(summary["total_available"]))
-    c2.metric("Total Distributed", int(summary["total_distributed"]))
-    c3.metric("In Transit", int(summary["in_transit"]))
-    c4.metric("Zones Supplied", int(summary["zones_supplied"]))
-    c5.metric("Low Stock", len(summary["low_stock_alerts"]))
-
-    # SECTION 1 — Inventory
-    st.markdown('<div style="font-size:1.1rem;font-weight:600;color:#4f8ef7;">Inventory</div>', unsafe_allow_html=True)
-    cols = st.columns(3)
-    for i, item in enumerate(inv):
-        with cols[i % 3]:
-            total = int(item.get("total_stock", 0))
-            dist = int(item.get("distributed", 0))
-            transit = int(item.get("in_transit", 0))
-            avail = int(item.get("available", 0))
-            frac = (dist / total) if total else 0.0
-            color = _progress_color(frac)
-            low = total > 0 and (avail / total) < 0.1
-            low_badge = '<span class="badge-red">LOW</span>' if low else ""
-            st.markdown(
-                f"""
-                <div class="card">
-                  <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <div style="font-weight:700;color:#ffffff;">{item.get('name')}</div>
-                    <div>{low_badge}</div>
-                  </div>
-                  <div style="margin-top:10px;color:#a0a8c0;">Available: <b style="color:#ffffff;">{avail}</b> {item.get('unit')}</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-            st.progress(min(1.0, max(0.0, frac)), text=f"Distributed {dist}/{total}")
-            st.markdown(
-                f"<div style='color:#a0a8c0;margin-top:6px;'>In Transit: <b style='color:#ffffff;'>{transit}</b> &nbsp;|&nbsp; Distributed: <b style='color:#ffffff;'>{dist}</b></div>",
-                unsafe_allow_html=True,
-            )
-
-    # SECTION 2 — Dispatch Resources
-    st.markdown('<div style="font-size:1.1rem;font-weight:600;color:#4f8ef7;">Dispatch Resources</div>', unsafe_allow_html=True)
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    with st.form("dispatch_form"):
-        st.markdown('<div style="font-weight:700;color:#ffffff;">Dispatch Resources to Safe Zone</div>', unsafe_allow_html=True)
-
-        res_labels = {i["resource_id"]: f'{i["name"]} (avail: {int(i["available"])})' for i in inv}
-        rid = st.selectbox("Select Resource", list(res_labels.keys()), format_func=lambda x: res_labels[x])
-
-        sz_labels = {
-            sz["id"]: f'{sz["name"]} — {int(sz.get("current_occupancy",0))}/{int(sz.get("capacity",0))}'
-            for sz in safe_zones
-        }
-        sz_id = st.selectbox("Select Safe Zone", list(sz_labels.keys()), format_func=lambda x: sz_labels[x])
-
-        avail = int(next(i for i in inv if i["resource_id"] == rid)["available"])
-        qty = st.number_input("Quantity", min_value=0, max_value=max(0, avail), value=min(50, max(0, avail)), step=10)
-        do = st.form_submit_button("Dispatch", use_container_width=True)
-
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    if do and qty > 0:
-        sz = next(z for z in safe_zones if z["id"] == sz_id)
-        alloc = rm.distribute(rid, int(qty), sz_id, sz["name"])
-        st.toast("Dispatched shipment.")
-
-        # Show route from hub to safe zone via Dijkstra
-        city = load_city_graph(active_city)
-        G = load_graph(city)
-        adj = get_adjacency_list(G, mode="fastest", disaster_events=[], positions=None)
-        hub_node = data.get("hub", {}).get("node_id", "N001")
-        path, cost = dijkstra(adj, hub_node, sz["node_id"])
-        if path:
-            dist_km = sum(get_edge_distance_km(G, path[i], path[i + 1]) for i in range(len(path) - 1))
-            st.info(f"Route from Hub to {sz['name']}: {' - '.join(path)} ({dist_km:.1f} km, ~{cost:.0f} min)")
-        else:
-            st.warning("No route found from hub to safe zone.")
-
-    # SECTION 3 — Active Shipments
-    st.markdown('<div style="font-size:1.1rem;font-weight:600;color:#4f8ef7;">Active Shipments</div>', unsafe_allow_html=True)
-    live = rm.load()
-    allocs = [a for a in live.get("safe_zone_allocations", []) if a.get("status") == "in_transit"]
-    if not allocs:
-        st.markdown('<div class="card" style="color:#a0a8c0;">No shipments in transit</div>', unsafe_allow_html=True)
+    st.title("Resource Hub")
+    st.caption("Distribute resources from main hub to teams and nodes")
+    
+    # Get selected map
+    selected_map = st.session_state.get("selected_map", "Map 1")
+    map_file = f"data/city_map{selected_map.split()[-1]}.json"
+    
+    # Load city data
+    try:
+        city_data = load_city_graph(map_file)
+        G = build_graph(city_data)
+        positions = get_positions(city_data)
+    except Exception as e:
+        st.error(f"Error loading map: {e}")
+        return
+    
+    # Load resources
+    resources_file = Path("data/resources.json")
+    if resources_file.exists():
+        with open(resources_file, 'r') as f:
+            resources_data = json.load(f)
     else:
-        st.markdown('<div class="card" style="padding:0;">', unsafe_allow_html=True)
-        for i, a in enumerate(allocs):
-            cols = st.columns([0.22, 0.1, 0.26, 0.2, 0.12, 0.1])
-            cols[0].markdown(f"<div style='padding:10px;color:#ffffff;'><b>{a.get('resource_name','')}</b></div>", unsafe_allow_html=True)
-            cols[1].markdown(f"<div style='padding:10px;color:#a0a8c0;'>{int(a.get('quantity',0))}</div>", unsafe_allow_html=True)
-            cols[2].markdown(f"<div style='padding:10px;color:#a0a8c0;'>{a.get('safe_zone_name','')}</div>", unsafe_allow_html=True)
-            cols[3].markdown(f"<div style='padding:10px;color:#a0a8c0;'>{a.get('dispatched_at','')}</div>", unsafe_allow_html=True)
-            cols[4].markdown("<div style='padding:10px;'><span class='badge-blue'>in_transit</span></div>", unsafe_allow_html=True)
-            if cols[5].button("Mark Delivered", key=f"del_{a.get('allocation_id')}"):
-                rm.confirm_delivery(a.get("allocation_id"))
-                st.toast("Shipment marked delivered.")
-                st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    # SECTION 4 — Safe Zone Inventory Status
-    st.markdown('<div style="font-size:1.1rem;font-weight:600;color:#4f8ef7;">Safe Zone Inventory Status</div>', unsafe_allow_html=True)
-    live = rm.load()
-    all_allocs = live.get("safe_zone_allocations", [])
-    for sz in load_safe_zones(active_city):
-        with st.expander(f"{sz['name']} — {int(sz.get('current_occupancy',0))}/{int(sz.get('capacity',0))}"):
-            cap = int(sz.get("capacity", 1))
-            cur = int(sz.get("current_occupancy", 0))
-            st.progress(min(1.0, cur / cap) if cap else 0.0, text="Capacity usage")
-
-            delivered = [a for a in all_allocs if a.get("safe_zone_id") == sz["id"] and a.get("status") == "delivered"]
-            transit = [a for a in all_allocs if a.get("safe_zone_id") == sz["id"] and a.get("status") == "in_transit"]
-
-            def sum_by_resource(items):
-                out = {}
-                for a in items:
-                    out[a.get("resource_name", "")] = out.get(a.get("resource_name", ""), 0) + int(a.get("quantity", 0))
-                return out
-
-            del_map = sum_by_resource(delivered)
-            tr_map = sum_by_resource(transit)
-
-            table = []
-            for item in inv:
-                name = item.get("name", "")
-                table.append({"resource": name, "delivered": del_map.get(name, 0), "in_transit": tr_map.get(name, 0)})
-            st.dataframe(table, use_container_width=True, hide_index=True)
-
-            needs = [r["resource"] for r in table if r["delivered"] == 0 and r["in_transit"] == 0]
-            if needs:
-                st.markdown(f"<div style='color:#a0a8c0;'><b>Needs Assessment:</b> {', '.join(needs)}</div>", unsafe_allow_html=True)
-
-    # SECTION 5 — Distribution Log
-    st.markdown('<div style="font-size:1.1rem;font-weight:600;color:#4f8ef7;">Distribution Log</div>', unsafe_allow_html=True)
-    log = rm.get_distribution_log(limit=50)
-    st.dataframe(log, use_container_width=True, hide_index=True)
-
-    st.subheader("Optimal Supply Allocation")
-    zone = st.selectbox("Select Safe Zone", [z["id"] for z in safe_zones], format_func=lambda x: next(z["name"] for z in safe_zones if z["id"] == x))
-    budget = int(summary["total_available"])
-    st.metric("Available capacity", budget)
-    resources = []
-    for item in inv:
-        resources.append(
-            {
-                "resource_id": item["resource_id"],
-                "name": item["name"],
-                "value_per_unit": max(1, int(item["available"]) // 10 + 1),
-                "cost_per_unit": 1,
-                "max_available": int(item["available"]),
+        resources_data = {
+            "hub_node": "A1",
+            "inventory": {
+                "medical_kits": 100,
+                "food_packs": 200,
+                "water_units": 300,
+                "fuel_canisters": 50,
+                "fire_suppressant": 40,
+                "rope_kits": 30
             }
-        )
-    st.dataframe(pd.DataFrame(resources), use_container_width=True)
-    if st.button("Optimize Supply Allocation"):
-        out = knapsack_supply(resources, budget=min(100, budget))
-        st.dataframe(pd.DataFrame(out["selected"]), use_container_width=True)
-        st.dataframe(pd.DataFrame(out["dp_table"]).style.background_gradient(cmap="Blues"), use_container_width=True)
+        }
+        with open(resources_file, 'w') as f:
+            json.dump(resources_data, f, indent=2)
+    
+    # Load teams
+    try:
+        with open("data/rescue_units.json", 'r') as f:
+            teams_data = json.load(f)
+    except:
+        teams_data = []
+    
+    # Initialize distribution log
+    if "distribution_log" not in st.session_state:
+        st.session_state["distribution_log"] = []
+    
+    hub_node = resources_data.get("hub_node", "A1")
+    inventory = resources_data.get("inventory", {})
+    
+    # SECTION 1: Hub Inventory
+    st.subheader("Hub Inventory")
+    
+    inv_cols = st.columns(len(inventory) if inventory else 1)
+    starting_amounts = {
+        "medical_kits": 100,
+        "food_packs": 200,
+        "water_units": 300,
+        "fuel_canisters": 50,
+        "fire_suppressant": 40,
+        "rope_kits": 30
+    }
+    
+    for idx, (resource, amount) in enumerate(inventory.items()):
+        with inv_cols[idx % len(inv_cols)]:
+            max_amount = starting_amounts.get(resource, 100)
+            pct = (amount / max_amount) * 100 if max_amount > 0 else 0
+            
+            delta_color = "normal"
+            if pct < 20:
+                delta_color = "inverse"
+            
+            st.metric(
+                resource.replace("_", " ").title(),
+                amount,
+                delta=f"{pct:.0f}%" if pct < 100 else None,
+                delta_color=delta_color
+            )
+    
+    # SECTION 2: Team Resource Status
+    st.subheader("Team Resource Status")
+    
+    teams_resource_data = []
+    for team in teams_data:
+        fuel_pct = (team.get("fuel_remaining", 0) / team.get("fuel_capacity", 1)) * 100
+        teams_resource_data.append({
+            "Team": team["name"],
+            "Fuel %": f"{fuel_pct:.0f}%",
+            "Medical Kits": team.get("medical_kits", 0),
+            "Food": team.get("food_packs", 0),
+            "Water": team.get("water_units", 0),
+            "Rope": team.get("rope_kits", 0),
+            "Fire Suppressant": team.get("fire_suppressant", 0)
+        })
+    
+    if teams_resource_data:
+        teams_df = pd.DataFrame(teams_resource_data)
+        
+        # Style low fuel
+        def color_fuel(val):
+            try:
+                pct = float(val.replace("%", ""))
+                if pct < 20:
+                    return "color: #e74c3c"
+            except:
+                pass
+            return ""
+        
+        styled_teams = teams_df.style.map(color_fuel, subset=["Fuel %"])
+        st.dataframe(styled_teams, use_container_width=True, hide_index=True)
+    
+    # SECTION 3: Distribute Resources
+    st.subheader("Distribute Resources")
+    
+    dist_col1, dist_col2 = st.columns([2, 3])
+    
+    with dist_col1:
+        # Select team
+        team_options = [f"{t['name']} ({t['type']})" for t in teams_data]
+        selected_team_display = st.selectbox("Select Team", team_options)
+        selected_team = teams_data[team_options.index(selected_team_display)] if team_options else None
+        
+        # Select resource
+        resource_options = list(inventory.keys())
+        selected_resource = st.selectbox("Select Resource", resource_options)
+        
+        # Amount
+        max_available = inventory.get(selected_resource, 0)
+        amount = st.number_input("Amount", min_value=1, max_value=max_available, value=1)
+        
+        if st.button("Distribute Resource", type="primary"):
+            if selected_team and selected_resource and amount > 0:
+                if inventory.get(selected_resource, 0) >= amount:
+                    # Deduct from hub
+                    inventory[selected_resource] -= amount
+                    resources_data["inventory"] = inventory
+                    
+                    with open(resources_file, 'w') as f:
+                        json.dump(resources_data, f, indent=2)
+                    
+                    # Add to team
+                    team_field = selected_resource
+                    current_amount = selected_team.get(team_field, 0)
+                    selected_team[team_field] = current_amount + amount
+                    
+                    with open("data/rescue_units.json", 'w') as f:
+                        json.dump(teams_data, f, indent=2)
+                    
+                    # Log distribution
+                    log_entry = {
+                        "timestamp": datetime.now().isoformat(),
+                        "team": selected_team["name"],
+                        "resource": selected_resource,
+                        "amount": amount
+                    }
+                    st.session_state["distribution_log"].append(log_entry)
+                    
+                    st.success(f"Distributed {amount} {selected_resource} to {selected_team['name']}")
+                    st.rerun()
+                else:
+                    st.error(f"Insufficient {selected_resource} in hub inventory")
+    
+    with dist_col2:
+        # Distribution log
+        st.write("**Distribution Log (Last 10)**")
+        
+        log = st.session_state.get("distribution_log", [])
+        if log:
+            log_df = pd.DataFrame(log[-10:])
+            log_df = log_df.iloc[::-1]  # Reverse to show newest first
+            st.dataframe(log_df, use_container_width=True, hide_index=True)
+        else:
+            st.info("No distributions yet")
+    
+    # SECTION 4: Resource Flow Map
+    st.subheader("Resource Flow Map")
+    
+    # Build team positions for map
+    team_positions = {t["id"]: t["current_node"] for t in teams_data}
+    
+    # Create map with hub highlighted
+    fig = build_city_map(
+        G, positions, city_data,
+        team_positions=team_positions,
+        height=500
+    )
+    
+    # Add hub annotation
+    if hub_node in positions:
+        x, y = positions[hub_node]
+        fig.add_trace(go.Scatter(
+            x=[x], y=[y],
+            mode='markers',
+            marker=dict(size=30, color='gold', symbol='star', line=dict(width=3, color='white')),
+            name='Main Hub',
+            showlegend=True
+        ))
+    
+    st.plotly_chart(fig, use_container_width=True)
+    
+    st.caption(f"Main Hub: {hub_node} (gold star). Team positions shown as colored markers.")
 
-    # SECTION 6 — Restock Hub
-    st.markdown('<div style="font-size:1.1rem;font-weight:600;color:#4f8ef7;">Restock Hub</div>', unsafe_allow_html=True)
-    with st.form("restock_form"):
-        rid2 = st.selectbox("Select resource", [i["resource_id"] for i in inv], format_func=lambda x: next(i["name"] for i in inv if i["resource_id"] == x))
-        qty2 = st.number_input("Quantity", min_value=0, value=100, step=50)
-        reason = st.text_input("Reason", value=f"Restock @ {datetime.now().strftime('%H:%M')}")
-        ok = st.form_submit_button("Restock", use_container_width=True)
-    if ok and qty2 > 0:
-        rm.restock(rid2, int(qty2), reason)
-        st.toast("Hub restocked.")
-        st.rerun()
 
+# Need to import go for the hub marker
+import plotly.graph_objects as go

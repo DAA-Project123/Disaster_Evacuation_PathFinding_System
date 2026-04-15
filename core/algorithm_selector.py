@@ -1,107 +1,151 @@
-from __future__ import annotations
-
-import math
+"""Algorithm selector for rescue pathfinding."""
 import time
+import networkx as nx
 
-import pandas as pd
-
-from algorithms.astar import astar, euclidean_distance
-from algorithms.bfs import bfs
-from algorithms.dfs import dfs
-from algorithms.dijkstra import dijkstra
-from algorithms.ucs import ucs
-from core.disaster_manager import compute_risk_score
-from core.graph_engine import get_adjacency_list, get_unweighted_adjacency
+from core.algorithms.bfs import bfs
+from core.algorithms.dfs import dfs
+from core.algorithms.dijkstra import dijkstra
+from core.algorithms.astar import astar
+from core.algorithms.greedy_bfs import greedy_bfs
+from core.graph_engine import get_adjacency_list_unweighted, get_adjacency_list_weighted
 
 
-def _run_algorithm(name: str, fn, *args):
-    t0 = time.perf_counter()
-    out = fn(*args)
-    t1 = time.perf_counter()
-    return out, (t1 - t0) * 1000.0, name
-
-
-def _path_uses_air(G, path: list[str]) -> bool:
+def _path_uses_air_edges(G, path):
+    """Check if path uses any air-only edges."""
+    if not path or len(path) < 2:
+        return False
     for i in range(len(path) - 1):
-        if bool(G.edges[path[i], path[i + 1]].get("air_only", False)):
-            return True
+        if G.has_edge(path[i], path[i+1]):
+            edge_data = G.edges[path[i], path[i+1]]
+            if edge_data.get("air_only", False):
+                return True
     return False
 
 
-def select_and_run(
-    G,
-    start: str,
-    goal: str,
-    disaster_events: list,
-    positions: dict,
-    city_graph_data: dict,
-    unit_type: str = "ground",
-) -> dict:
-    adj_unweighted = get_unweighted_adjacency(G, disaster_events, unit_type=unit_type)
-    adj_weighted = get_adjacency_list(G, "balanced", disaster_events, unit_type=unit_type)
-    adj_safest = get_adjacency_list(G, "safest", disaster_events, unit_type=unit_type)
+def _get_node_names(path, G):
+    """Get display names for path nodes."""
+    if not path:
+        return []
+    names = []
+    for node_id in path:
+        node_data = G.nodes.get(node_id, {})
+        names.append(node_data.get("display_name", node_id))
+    return names
 
-    runs = []
-    bfs_path, bfs_ms, _ = _run_algorithm("BFS", bfs, adj_unweighted, start, goal)
-    dfs_path, dfs_ms, _ = _run_algorithm("DFS", dfs, adj_unweighted, start, goal)
-    (dij_path, dij_cost), dij_ms, _ = _run_algorithm("Dijkstra", dijkstra, adj_weighted, start, goal)
-    (ast_path, ast_cost), ast_ms, _ = _run_algorithm("A*", astar, adj_safest, start, goal, euclidean_distance, positions)
-    (ucs_path, ucs_cost), ucs_ms, _ = _run_algorithm("UCS", ucs, adj_weighted, start, goal)
 
-    runs.extend(
-        [
-            {"algorithm": "BFS", "path": bfs_path or [], "cost": float(len(bfs_path) - 1) if bfs_path else math.inf, "time_ms": bfs_ms},
-            {"algorithm": "DFS", "path": dfs_path or [], "cost": float(len(dfs_path) - 1) if dfs_path else math.inf, "time_ms": dfs_ms},
-            {"algorithm": "Dijkstra", "path": dij_path or [], "cost": float(dij_cost), "time_ms": dij_ms},
-            {"algorithm": "A*", "path": ast_path or [], "cost": float(ast_cost), "time_ms": ast_ms},
-            {"algorithm": "UCS", "path": ucs_path or [], "cost": float(ucs_cost), "time_ms": ucs_ms},
-        ]
-    )
-
-    rows = []
-    for run in runs:
-        path = run["path"]
-        found = len(path) > 0
-        path_len = max(0, len(path) - 1) if found else 0
-        nodes_explored = len(path) if found else 0
-        risk_vals = [compute_risk_score(n, disaster_events, G) for n in path] if found else [1.0]
-        safety = 1.0 - (sum(risk_vals) / len(risk_vals))
-        rows.append(
-            {
-                "Algorithm": run["algorithm"],
-                "Path Found": found,
-                "Path": path,
-                "Path Length": path_len,
-                "Nodes Explored": nodes_explored,
-                "Time (ms)": float(run["time_ms"]),
-                "Travel Time (min)": float(run["cost"]) if math.isfinite(run["cost"]) else float("inf"),
-                "Safety Score": float(max(0.0, safety)),
-                "used_air_edges": _path_uses_air(G, path) if found else False,
-            }
-        )
-
-    df = pd.DataFrame(rows)
-    df["Composite Score"] = (
-        df["Time (ms)"].rank(pct=True)
-        + df["Nodes Explored"].rank(pct=True)
-        + df["Path Length"].replace(0, math.inf).rank(pct=True)
-        + (1.0 - df["Safety Score"]).rank(pct=True)
-    )
-    df.loc[~df["Path Found"], "Composite Score"] = float("inf")
-    best_row = df.sort_values("Composite Score").iloc[0]
-
-    all_results = df.sort_values("Composite Score").to_dict(orient="records")
-    rec = {
-        "algorithm": best_row["Algorithm"],
-        "path": best_row["Path"],
-        "travel_time_min": float(best_row["Travel Time (min)"]),
-        "safety_score": float(best_row["Safety Score"]),
-        "nodes_explored": int(best_row["Nodes Explored"]),
-        "path_length": int(best_row["Path Length"]),
-        "runtime_ms": float(best_row["Time (ms)"]),
-        "used_air_edges": bool(best_row["used_air_edges"]),
-        "composite_score": float(best_row["Composite Score"]),
-        "why_selected": "Lowest composite score across time, exploration count, path length, and safety.",
+def select_and_run(G, start, goal, disaster_events, positions, city_graph_data, unit_type="ground"):
+    """
+    Run all 5 pathfinding algorithms (BFS, DFS, Dijkstra, A*, Greedy BFS).
+    Select best using composite score.
+    
+    Args:
+        G: NetworkX graph
+        start: Starting node
+        goal: Target node  
+        disaster_events: Dict of node_id -> event dict
+        positions: Dict of node_id -> (x, y)
+        city_graph_data: Full city graph data
+        unit_type: "ground", "helicopter", or "mountain_rescue"
+    
+    Returns:
+        dict: {
+            "results": [...],
+            "recommended": {...},
+            "why_selected": str
+        }
+    """
+    # Get blocked edges from session state or disaster events
+    blocked_edges = set()
+    for node_id, event in (disaster_events or {}).items():
+        if event.get("blocked_edges"):
+            for u, v in event.get("blocked_edges", []):
+                blocked_edges.add((u, v))
+                blocked_edges.add((v, u))
+    
+    # Get adjacency lists
+    adj_unweighted = get_adjacency_list_unweighted(G, blocked_edges, unit_type)
+    adj_weighted = get_adjacency_list_weighted(G, blocked_edges, unit_type)
+    
+    results = []
+    algorithms = [
+        ("BFS", lambda: bfs(adj_unweighted, start, goal)),
+        ("DFS", lambda: dfs(adj_unweighted, start, goal)),
+        ("Dijkstra", lambda: dijkstra(adj_weighted, start, goal)),
+        ("A*", lambda: astar(adj_weighted, start, goal, positions)),
+        ("Greedy BFS", lambda: greedy_bfs(adj_weighted, start, goal, positions)),
+    ]
+    
+    for name, algo_fn in algorithms:
+        result = algo_fn()
+        
+        path = result.get("path")
+        found = result.get("found", False)
+        nodes_explored = result.get("nodes_explored", 0)
+        time_ms = result.get("time_ms", 0.0)
+        path_cost = result.get("path_cost", 0.0) if "path_cost" in result else (len(path) - 1 if path else 0)
+        
+        # Calculate score
+        if not found:
+            score = 0.0
+        else:
+            path_length = len(path) - 1 if path else 0
+            # Penalize DFS if it explored too many nodes
+            dfs_penalty = 1.0
+            if name == "DFS":
+                # Get Dijkstra's nodes explored for comparison
+                dij_result = next((r for r in results if r["algorithm"] == "Dijkstra"), None)
+                if dij_result and dij_result.get("nodes_explored", 0) > 0:
+                    if nodes_explored > 2 * dij_result["nodes_explored"]:
+                        dfs_penalty = 0.5
+            
+            score = (
+                (1.0 / max(nodes_explored, 1) * 0.3) +
+                (1.0 / max(path_length, 1) * 0.4) +
+                (1.0 / max(time_ms, 0.1) * 0.3)
+            ) * dfs_penalty
+        
+        results.append({
+            "algorithm": name,
+            "path": path,
+            "path_names": _get_node_names(path, G),
+            "nodes_explored": nodes_explored,
+            "time_ms": time_ms,
+            "path_length": len(path) - 1 if path else 0,
+            "path_cost": path_cost,
+            "found": found,
+            "used_air_edges": _path_uses_air_edges(G, path) if path else False,
+            "score": score,
+            "recommended": False
+        })
+    
+    # Find best algorithm
+    found_results = [r for r in results if r["found"]]
+    if found_results:
+        recommended = max(found_results, key=lambda x: x["score"])
+        recommended["recommended"] = True
+        
+        # Build why_selected explanation
+        why_parts = []
+        if recommended["algorithm"] == "A*":
+            why_parts.append("A* found the optimal path using heuristic guidance")
+        elif recommended["algorithm"] == "Dijkstra":
+            why_parts.append("Dijkstra found the shortest weighted path")
+        elif recommended["algorithm"] == "BFS":
+            why_parts.append("BFS found the shortest path in unweighted edges")
+        elif recommended["algorithm"] == "Greedy BFS":
+            why_parts.append("Greedy BFS found a path quickly using pure heuristic")
+        elif recommended["algorithm"] == "DFS":
+            why_parts.append("DFS found a valid path through deep exploration")
+        
+        why_parts.append(f"with {recommended['nodes_explored']} nodes explored")
+        why_parts.append(f"and path length {recommended['path_length']}")
+        why_selected = " ".join(why_parts) + "."
+    else:
+        recommended = None
+        why_selected = "No path found by any algorithm."
+    
+    return {
+        "results": results,
+        "recommended": recommended,
+        "why_selected": why_selected
     }
-    return {"recommended": rec, "all_results": all_results, "all_results_df": df}
-

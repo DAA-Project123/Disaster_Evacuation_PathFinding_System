@@ -1,154 +1,174 @@
-{
-  "missions": [
-    {
-      "mission_id": "M1776072440",
-      "city": "Veridian City",
-      "team_id": "U007",
-      "team_name": "Charlie-1",
-      "team_type": "police",
-      "target_node": "N009",
-      "target_name": "Canal Gate",
-      "path": [
-        "N009"
-      ],
-      "path_names": [
-        "Canal Gate"
-      ],
-      "original_path_length": 0,
-      "current_step": 0,
-      "algorithm_used": "UCS",
-      "why_selected": "Lowest composite score across time, exploration count, path length, and safety.",
-      "total_path_length": 0,
-      "nodes_explored": 1,
-      "time_ms": 0.00045900014811195433,
-      "people_at_target": 230,
-      "injury_level": "high",
-      "status": "rescued",
-      "dispatched_at": "2026-04-13T14:57:20",
-      "arrived_at": "2026-04-14T20:57:32",
-      "rescued_at": "2026-04-14T20:57:57",
-      "completed_at": null,
-      "fuel_used": 0,
-      "used_air_edges": false,
-      "replanned": false,
-      "original_algorithm": "UCS"
-    },
-    {
-      "mission_id": "M1776179902",
-      "city": "Veridian City",
-      "team_id": "U001",
-      "team_name": "Alpha-1",
-      "team_type": "ambulance",
-      "target_node": "N006",
-      "target_name": "Downtown Shelter",
-      "path": [
-        "N006",
-        "N005",
-        "N004",
-        "N003"
-      ],
-      "path_names": [
-        "Downtown Shelter",
-        "General Hospital",
-        "Museum Corner",
-        "Civic Loop"
-      ],
-      "original_path_length": 3,
-      "current_step": 3,
-      "algorithm_used": "UCS",
-      "why_selected": "Lowest composite score across time, exploration count, path length, and safety.",
-      "total_path_length": 3,
-      "nodes_explored": 4,
-      "time_ms": 0.017040991224348545,
-      "people_at_target": 180,
-      "injury_level": "high",
-      "status": "rescued",
-      "dispatched_at": "2026-04-14T20:48:22",
-      "arrived_at": "2026-04-15T17:24:33",
-      "rescued_at": "2026-04-15T17:24:35",
-      "completed_at": null,
-      "fuel_used": 6,
-      "used_air_edges": false,
-      "replanned": false,
-      "original_algorithm": "UCS"
-    },
-    {
-      "mission_id": "M1776180494",
-      "city": "Veridian City",
-      "team_id": "H001",
-      "team_name": "Heli-1",
-      "team_type": "helicopter",
-      "target_node": "N011",
-      "target_name": "Quayside Market",
-      "path": [
-        "N011",
-        "N010",
-        "N009",
-        "N008",
-        "N002",
-        "N001"
-      ],
-      "path_names": [
-        "Quayside Market",
-        "Harbor Approach",
-        "Canal Gate",
-        "Riverside Roundabout",
-        "Commerce Junction",
-        "Central Square"
-      ],
-      "original_path_length": 5,
-      "current_step": 5,
-      "algorithm_used": "Dijkstra",
-      "why_selected": "Lowest composite score across time, exploration count, path length, and safety.",
-      "total_path_length": 5,
-      "nodes_explored": 6,
-      "time_ms": 0.03675000334624201,
-      "people_at_target": 280,
-      "injury_level": "high",
-      "status": "rescued",
-      "dispatched_at": "2026-04-14T20:58:14",
-      "arrived_at": "2026-04-14T20:58:37",
-      "rescued_at": "2026-04-14T20:58:39",
-      "completed_at": null,
-      "fuel_used": 10,
-      "used_air_edges": false,
-      "replanned": false,
-      "original_algorithm": "Dijkstra"
-    },
-    {
-      "mission_id": "M1776254423",
-      "city": "Veridian City",
-      "team_id": "U004",
-      "team_name": "Bravo-1",
-      "team_type": "fire_truck",
-      "target_node": "N012",
-      "target_name": "North Bridge",
-      "path": [
-        "N012",
-        "N006"
-      ],
-      "path_names": [
-        "North Bridge",
-        "Downtown Shelter"
-      ],
-      "original_path_length": 1,
-      "current_step": 1,
-      "algorithm_used": "UCS",
-      "why_selected": "Lowest composite score across time, exploration count, path length, and safety.",
-      "total_path_length": 1,
-      "nodes_explored": 2,
-      "time_ms": 0.0045000051613897085,
-      "people_at_target": 130,
-      "injury_level": "high",
-      "status": "rescued",
-      "dispatched_at": "2026-04-15T17:30:23",
-      "arrived_at": "2026-04-15T17:30:32",
-      "rescued_at": "2026-04-15T17:30:34",
-      "completed_at": null,
-      "fuel_used": 2,
-      "used_air_edges": false,
-      "replanned": false,
-      "original_algorithm": "UCS"
-    }
-  ]
-}
+[
+  {
+    "mission_id": "M1776273564",
+    "map": "Map 1",
+    "team_id": "U001",
+    "team_name": "Alpha-1",
+    "team_type": "ambulance",
+    "base_node": "A1",
+    "target_node": "B3",
+    "target_name": "B3 - Industrial Park",
+    "path_to_target": [
+      "A1",
+      "A4",
+      "B3"
+    ],
+    "path_names_to_target": [
+      "A1 - Central Hub",
+      "A4 - West Market",
+      "B3 - Industrial Park"
+    ],
+    "return_path": [
+      "B3",
+      "B1",
+      "B4",
+      "A1"
+    ],
+    "current_step": 3,
+    "phase": "returning",
+    "algorithm_used": "Greedy BFS",
+    "why_selected": "",
+    "nodes_explored": 3,
+    "time_ms": 0.00870799703989178,
+    "path_length": 2,
+    "people_at_target": 50,
+    "injury_level": "medium",
+    "status": "complete",
+    "replanned": false,
+    "original_path_length": 2,
+    "dispatched_at": "2026-04-15T22:49:24.325007",
+    "arrived_at": "2026-04-15T22:49:38.837988",
+    "rescued_at": "2026-04-15T22:49:41.603683",
+    "completed_at": "2026-04-15T22:49:48.969789",
+    "fuel_used": 4,
+    "used_air_edges": false,
+    "people_rescued": 50
+  },
+  {
+    "mission_id": "M1776273640",
+    "map": "Map 1",
+    "team_id": "U004",
+    "team_name": "Blaze-1",
+    "team_type": "fire_fighter",
+    "base_node": "B1",
+    "target_node": "B3",
+    "target_name": "B3 - Industrial Park",
+    "path_to_target": [
+      "B1",
+      "B3"
+    ],
+    "path_names_to_target": [
+      "B1 - District Safe Zone",
+      "B3 - Industrial Park"
+    ],
+    "return_path": [
+      "B3",
+      "B1"
+    ],
+    "current_step": 1,
+    "phase": "returning",
+    "algorithm_used": "A*",
+    "why_selected": "",
+    "nodes_explored": 2,
+    "time_ms": 0.019750004867091775,
+    "path_length": 1,
+    "people_at_target": 50,
+    "injury_level": "medium",
+    "status": "complete",
+    "replanned": false,
+    "original_path_length": 1,
+    "dispatched_at": "2026-04-15T22:50:40.837297",
+    "arrived_at": "2026-04-15T22:50:55.114404",
+    "rescued_at": "2026-04-15T22:50:56.639574",
+    "completed_at": "2026-04-15T22:50:58.674959",
+    "fuel_used": 2,
+    "used_air_edges": false,
+    "people_rescued": 50
+  },
+  {
+    "mission_id": "M1776273643",
+    "map": "Map 1",
+    "team_id": "U005",
+    "team_name": "Peak-1",
+    "team_type": "mountain_rescue",
+    "base_node": "B1",
+    "target_node": "B3",
+    "target_name": "B3 - Industrial Park",
+    "path_to_target": [
+      "B1",
+      "B3"
+    ],
+    "path_names_to_target": [
+      "B1 - District Safe Zone",
+      "B3 - Industrial Park"
+    ],
+    "return_path": [
+      "B3",
+      "B1"
+    ],
+    "current_step": 1,
+    "phase": "returning",
+    "algorithm_used": "A*",
+    "why_selected": "",
+    "nodes_explored": 2,
+    "time_ms": 0.012499993317760527,
+    "path_length": 1,
+    "people_at_target": 50,
+    "injury_level": "medium",
+    "status": "complete",
+    "replanned": false,
+    "original_path_length": 1,
+    "dispatched_at": "2026-04-15T22:50:43.708766",
+    "arrived_at": "2026-04-15T22:51:02.099117",
+    "rescued_at": "2026-04-15T22:51:04.802877",
+    "completed_at": "2026-04-15T22:51:07.500101",
+    "fuel_used": 2,
+    "used_air_edges": false,
+    "people_rescued": 50
+  },
+  {
+    "mission_id": "M1776274181",
+    "map": "Map 1",
+    "team_id": "U003",
+    "team_name": "Shield-1",
+    "team_type": "police",
+    "base_node": "A1",
+    "target_node": "B3",
+    "target_name": "B3 - Industrial Park",
+    "path_to_target": [
+      "A1",
+      "A4",
+      "B3"
+    ],
+    "path_names_to_target": [
+      "A1 - Central Hub",
+      "A4 - West Market",
+      "B3 - Industrial Park"
+    ],
+    "return_path": [
+      "B3",
+      "B1",
+      "B4",
+      "A1"
+    ],
+    "current_step": 3,
+    "phase": "returning",
+    "algorithm_used": "Greedy BFS",
+    "why_selected": "",
+    "nodes_explored": 3,
+    "time_ms": 0.016707999748177826,
+    "path_length": 2,
+    "people_at_target": 50,
+    "injury_level": "medium",
+    "status": "complete",
+    "replanned": false,
+    "original_path_length": 2,
+    "dispatched_at": "2026-04-15T22:59:41.618518",
+    "arrived_at": "2026-04-15T22:59:48.115295",
+    "rescued_at": "2026-04-15T22:59:50.017371",
+    "completed_at": "2026-04-15T22:59:53.661562",
+    "fuel_used": 4,
+    "used_air_edges": false,
+    "people_rescued": 50
+  }
+]
