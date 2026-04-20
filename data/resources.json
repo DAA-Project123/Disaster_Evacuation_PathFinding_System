@@ -62,5 +62,46 @@
     }
   ],
   "safe_zone_allocations": [],
-  "distribution_log": []
+  "distribution_log": [
+    {
+      "time": "2026-04-21T00:25:09",
+      "action": "consumed",
+      "resource_id": "MULTI",
+      "resource_name": "Safe-zone consumption",
+      "quantity": 20,
+      "safe_zone_id": "SZ-02",
+      "safe_zone_name": "N014",
+      "reason": "Rescued civilians settled by SkyLift One"
+    },
+    {
+      "time": "2026-04-21T01:02:41",
+      "action": "consumed",
+      "resource_id": "MULTI",
+      "resource_name": "Safe-zone consumption",
+      "quantity": 14,
+      "safe_zone_id": "sz2",
+      "safe_zone_name": "Safe Zone Beta",
+      "reason": "Rescued civilians settled by Rapid Care"
+    },
+    {
+      "time": "2026-04-21T01:05:32",
+      "action": "consumed",
+      "resource_id": "MULTI",
+      "resource_name": "Safe-zone consumption",
+      "quantity": 20,
+      "safe_zone_id": "sz1",
+      "safe_zone_name": "Safe Zone Alpha",
+      "reason": "Rescued civilians settled by SkyLift One"
+    },
+    {
+      "time": "2026-04-21T01:22:01",
+      "action": "consumed",
+      "resource_id": "MULTI",
+      "resource_name": "Safe-zone consumption",
+      "quantity": 50,
+      "safe_zone_id": "sz3",
+      "safe_zone_name": "Central Hospital",
+      "reason": "Rescued civilians settled by Civic Shield"
+    }
+  ]
 }

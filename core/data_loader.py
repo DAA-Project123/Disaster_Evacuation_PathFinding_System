@@ -12,9 +12,15 @@ _ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = _ROOT / "data"
 CITIES_DIR = DATA_DIR / "cities"
 CITY_MAP = {
-    "Map 1": "veridian",
+    "Map 1": "map1",
     "Map 2": "map2",
     "Map 3": "map3",
+}
+
+CITY_DISPLAY_NAMES = {
+    "Map 1": "Veridian City",
+    "Map 2": "Harborfield",
+    "Map 3": "Maplecrest",
 }
 
 
@@ -46,62 +52,56 @@ def _read_json(path: Path) -> Any:
 
 
 def _city_slug(city: str) -> str:
-    return CITY_MAP.get(city, "veridian")
+    return CITY_MAP.get(city, "map1")
 
 
 def _city_file(prefix: str, city: str) -> Path:
-    if prefix == "city":
-        city_map_files = {
-            "Map 1": "city_map1.json",
-            "Map 2": "city_map2.json",
-            "Map 3": "city_map3.json",
-        }
-        if city in city_map_files:
-            return CITIES_DIR / city_map_files[city]
-    return CITIES_DIR / f"{prefix}_{_city_slug(city)}.json"
+    """Get file path for city data using consistent map1/map2/map3 naming."""
+    slug = _city_slug(city)
+    return CITIES_DIR / f"{prefix}_{slug}.json"
 
 
-def load_city_graph(city: str = "Veridian City") -> dict:
+def load_city_graph(city: str = "Map 1") -> dict:
     return _read_json(_city_file("city", city))
 
 
-def save_city_graph(data, city: str = "Veridian City") -> None:
+def save_city_graph(data, city: str = "Map 1") -> None:
     _atomic_write_json(_city_file("city", city), data)
 
 
-def load_safe_zones(city: str = "Veridian City") -> list:
+def load_safe_zones(city: str = "Map 1") -> list:
     return _read_json(_city_file("safe_zones", city))
 
 
-def load_safe_zones_df(city: str = "Veridian City") -> pd.DataFrame:
+def load_safe_zones_df(city: str = "Map 1") -> pd.DataFrame:
     return pd.DataFrame(load_safe_zones(city))
 
 
-def save_safe_zones(data, city: str = "Veridian City") -> None:
+def save_safe_zones(data, city: str = "Map 1") -> None:
     _atomic_write_json(_city_file("safe_zones", city), data)
 
 
-def load_disaster_events(city: str = "Veridian City") -> list:
+def load_disaster_events(city: str = "Map 1") -> list:
     return _read_json(_city_file("events", city))
 
 
-def load_disaster_events_df(city: str = "Veridian City") -> pd.DataFrame:
+def load_disaster_events_df(city: str = "Map 1") -> pd.DataFrame:
     return pd.DataFrame(load_disaster_events(city))
 
 
-def save_disaster_events(data, city: str = "Veridian City") -> None:
+def save_disaster_events(data, city: str = "Map 1") -> None:
     _atomic_write_json(_city_file("events", city), data)
 
 
-def load_rescue_units(city: str = "Veridian City") -> list:
+def load_rescue_units(city: str = "Map 1") -> list:
     return _read_json(_city_file("units", city))
 
 
-def save_rescue_units(data, city: str = "Veridian City") -> None:
+def save_rescue_units(data, city: str = "Map 1") -> None:
     _atomic_write_json(_city_file("units", city), data)
 
 
-def load_rescue_units_df(city: str = "Veridian City") -> pd.DataFrame:
+def load_rescue_units_df(city: str = "Map 1") -> pd.DataFrame:
     return pd.DataFrame(load_rescue_units(city))
 
 
@@ -113,10 +113,10 @@ def save_resources(data) -> None:
     _atomic_write_json(DATA_DIR / "resources.json", data)
 
 
-def load_evacuation_zones(city: str = "Veridian City") -> list:
+def load_evacuation_zones(city: str = "Map 1") -> list:
     return _read_json(_city_file("zones", city))
 
-def load_evacuation_zones_df(city: str = "Veridian City") -> pd.DataFrame:
+def load_evacuation_zones_df(city: str = "Map 1") -> pd.DataFrame:
     return pd.DataFrame(load_evacuation_zones(city))
 
 
@@ -191,18 +191,19 @@ def reset_resource_runtime_state() -> None:
     resources["distribution_log"] = []
     save_resources(resources)
 
-    for city in CITY_MAP.keys():
-        zones = load_safe_zones(city)
-        for zone in zones:
-            zone["current_occupancy"] = 0
-            zone["resources"] = {
-                "food_packets": 0,
-                "water_liters": 0,
-                "medical_kits": 0,
-                "blankets": 0,
-                "rescue_boats": 0,
-                "emergency_medicines": 0,
-            }
-            zone["victims"] = {"critical": 0, "high": 0, "medium": 0, "low": 0, "recovered": 0, "total": 0}
-        save_safe_zones(zones, city)
-
+    for city in ["Map 1", "Map 2", "Map 3"]:
+        try:
+            zones = load_safe_zones(city)
+            for zone in zones:
+                zone["current_occupancy"] = 0
+                zone["resources"] = {
+                    "food_packets": 0,
+                    "water_liters": 0,
+                    "medical_kits": 0,
+                    "rescue_boats": 0,
+                    "emergency_medicines": 0,
+                }
+                zone["victims"] = {"critical": 0, "high": 0, "medium": 0, "low": 0, "recovered": 0, "total": 0}
+            save_safe_zones(zones, city)
+        except FileNotFoundError:
+            pass  # City file doesn't exist yet

@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disaster Evacuation PathFinding System</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <!-- Vis.js Network -->
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        :root {
+            --bg-primary: #24273a;
+            --bg-secondary: #1e2030;
+            --bg-card: #363a4f;
+            --text-primary: #cad3f5;
+            --text-secondary: #b8c0e0;
+            --accent-blue: #8aadf4;
+            --accent-green: #a6da95;
+            --accent-red: #ed8796;
+            --accent-yellow: #eed49f;
+            --accent-cyan: #91d7e3;
+            --accent-purple: #c6a0f6;
+            --border: #494d64;
+        }
+        
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+        
+        .btn-primary {
+            background: var(--accent-blue);
+            color: #181926;
+            font-weight: 600;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary:hover {
+            background: #7dc4e4;
+            transform: translateY(-1px);
+        }
+        
+        .btn-danger {
+            background: var(--accent-red);
+            color: #181926;
+            font-weight: 600;
+            padding: 8px 16px;
+            border-radius: 8px;
+        }
+        
+        .btn-success {
+            background: var(--accent-green);
+            color: #181926;
+            font-weight: 600;
+            padding: 8px 16px;
+            border-radius: 8px;
+        }
+        
+        .nav-item {
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-secondary);
+        }
+        
+        .nav-item:hover {
+            background: var(--border);
+        }
+        
+        .nav-item.active {
+            background: var(--accent-blue);
+            color: #181926;
+            font-weight: 600;
+        }
+        
+        .metric-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+        }
+        
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        
+        .metric-label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+        
+        .badge {
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+        
+        .badge-critical {
+            background: var(--accent-red);
+            color: #181926;
+        }
+        
+        .badge-high {
+            background: var(--accent-yellow);
+            color: #181926;
+        }
+        
+        .badge-medium {
+            background: var(--accent-blue);
+            color: #181926;
+        }
+        
+        .badge-low {
+            background: var(--accent-green);
+            color: #181926;
+        }
+        
+        .badge-available {
+            background: var(--accent-green);
+            color: #181926;
+        }
+        
+        .badge-dispatched {
+            background: var(--accent-yellow);
+            color: #181926;
+        }
+        
+        #graph-container {
+            width: 100%;
+            height: 600px;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+        
+        #graph-container.race-mode {
+            height: 400px;
+        }
+        
+        .race-panel {
+            width: 100%;
+            height: 350px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        
+        .form-input {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: var(--text-primary);
+            width: 100%;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+        
+        .form-label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-bottom: 4px;
+            display: block;
+        }
+        
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--accent-cyan);
+            margin-bottom: 12px;
+        }
+        
+        .sidebar {
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+        }
+        
+        .tab-btn {
+            padding: 12px 20px;
+            color: var(--text-secondary);
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        
+        .tab-btn.active {
+            color: var(--text-primary);
+            border-bottom-color: var(--accent-blue);
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #5b6078;
+        }
+        
+        /* Animation for visited nodes */
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+        
+        .vis-network {
+            outline: none;
+        }
+        
+        .loading-spinner {
+            border: 3px solid var(--border);
+            border-top: 3px solid var(--accent-blue);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body x-data="app()" x-init="init()">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="sidebar w-64 flex-shrink-0 flex flex-col">
+            <div class="p-4 border-b border-[var(--border)]">
+                <div class="text-xl font-bold text-[var(--text-primary)]">Disaster Response</div>
+                <div class="text-sm text-[var(--text-secondary)]">Admin Console</div>
+            </div>
+            
+            <div class="p-4">
+                <label class="form-label">Active Map</label>
+                <select x-model="activeCity" @change="changeCity()" class="form-input">
+                    <option value="Map 1">Veridian City</option>
+                    <option value="Map 2">Harborfield</option>
+                    <option value="Map 3">Maplecrest</option>
+                </select>
+            </div>
+            
+            <nav class="flex-1 px-2 py-4 space-y-1">
+                <div @click="activeTab = 'dashboard'" 
+                     :class="{'active': activeTab === 'dashboard'}"
+                     class="nav-item">
+                    City Overview
+                </div>
+                <div @click="activeTab = 'disaster'" 
+                     :class="{'active': activeTab === 'disaster'}"
+                     class="nav-item">
+                    Disaster Control
+                </div>
+                <div @click="activeTab = 'rescue'" 
+                     :class="{'active': activeTab === 'rescue'}"
+                     class="nav-item">
+                    Rescue Operations
+                </div>
+                <div @click="activeTab = 'resources'" 
+                     :class="{'active': activeTab === 'resources'}"
+                     class="nav-item">
+                    Resource Hub
+                </div>
+                <div @click="activeTab = 'algorithms'" 
+                     :class="{'active': activeTab === 'algorithms'}"
+                     class="nav-item">
+                    Algorithm Lab
+                </div>
+            </nav>
+            
+            <div class="p-4 border-t border-[var(--border)]">
+                <div class="text-xs text-[var(--text-secondary)]">
+                    <div x-text="new Date().toLocaleString()"></div>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto">
+            <!-- Header -->
+            <header class="bg-[var(--bg-secondary)] border-b border-[var(--border)] px-6 py-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h1 class="text-2xl font-bold" x-text="activeCity + ' - Disaster Command Center'"></h1>
+                        <p class="text-[var(--text-secondary)]" x-text="currentTime"></p>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full" :class="wsConnected ? 'bg-green-500' : 'bg-red-500'"></span>
+                            <span class="text-sm text-[var(--text-secondary)]" x-text="wsConnected ? 'Live' : 'Offline'"></span>
+                        </div>
+                        <button @click="resetAll()" class="btn-danger text-sm">Reset All</button>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Dashboard Tab -->
+            <div x-show="activeTab === 'dashboard'" class="p-6">
+                <!-- Metrics -->
+                <div class="grid grid-cols-5 gap-4 mb-6">
+                    <div class="metric-card">
+                        <div class="metric-value" x-text="metrics.totalNodes">0</div>
+                        <div class="metric-label">Total Nodes</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" x-text="metrics.activeDisasters">0</div>
+                        <div class="metric-label">Active Disasters</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" x-text="metrics.blockedRoads">0</div>
+                        <div class="metric-label">Blocked Roads</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" x-text="metrics.zonesAtRisk">0</div>
+                        <div class="metric-label">Zones at Risk</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" x-text="metrics.availableSafeZones">0</div>
+                        <div class="metric-label">Safe Zones Available</div>
+                    </div>
+                </div>
+                
+                <!-- Main Graph -->
+                <div class="grid grid-cols-3 gap-6">
+                    <div class="col-span-2">
+                        <div class="section-title">City Network Map</div>
+                        <div class="flex gap-2 mb-3">
+                            <button @click="toggleHeatmap()" 
+                                    :class="showHeatmap ? 'bg-[var(--accent-blue)] text-[#181926]' : 'bg-[var(--bg-card)]'"
+                                    class="px-3 py-1 rounded text-sm font-medium transition-colors">
+                                Heatmap
+                            </button>
+                            <button @click="showEvacuationWaveModal = true" class="btn-primary text-sm">
+                                Simulate Evacuation Wave
+                            </button>
+                            <button @click="resetGraph()" class="px-3 py-1 bg-[var(--bg-card)] rounded text-sm">
+                                Reset View
+                            </button>
+                        </div>
+                        <div id="graph-container"></div>
+                        
+                        <!-- Legend -->
+                        <div class="flex gap-4 mt-3 text-sm">
+                            <div class="flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full bg-[#5b6078]"></span>
+                                <span class="text-[var(--text-secondary)]">Road</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full bg-[#91d7e3]"></span>
+                                <span class="text-[var(--text-secondary)]">Air Corridor</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full bg-[#ed8796]"></span>
+                                <span class="text-[var(--text-secondary)]">Blocked</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full bg-[#a6da95]"></span>
+                                <span class="text-[var(--text-secondary)]">Safe Zone</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <div class="section-title">Active Disaster Events</div>
+                        <div class="space-y-3">
+                            <template x-for="event in activeEvents" :key="event.event_id">
+                                <div class="card p-4">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="font-bold capitalize" x-text="event.type"></span>
+                                        <span class="badge" :class="'badge-' + event.severity" x-text="event.severity"></span>
+                                    </div>
+                                    <div class="text-sm text-[var(--text-secondary)]">
+                                        <div>Affected nodes: <span class="text-[var(--text-primary)] font-semibold" x-text="event.affected_nodes?.length || 0"></span></div>
+                                        <div>Blocked roads: <span class="text-[var(--text-primary)] font-semibold" x-text="event.blocked_edges?.length || 0"></span></div>
+                                        <div class="text-xs mt-1" x-text="event.timestamp"></div>
+                                    </div>
+                                </div>
+                            </template>
+                            <div x-show="activeEvents.length === 0" class="card p-4 text-[var(--text-secondary)] text-center">
+                                No active disasters
+                            </div>
+                        </div>
+                        
+                        <div class="section-title mt-6">Zone Risk Summary</div>
+                        <div class="card overflow-hidden">
+                            <table class="w-full text-sm">
+                                <thead class="bg-[var(--bg-secondary)]">
+                                    <tr>
+                                        <th class="p-3 text-left text-[var(--text-secondary)]">Zone</th>
+                                        <th class="p-3 text-left text-[var(--text-secondary)]">Risk</th>
+                                        <th class="p-3 text-left text-[var(--text-secondary)]">Blocked</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="zone in zoneSummary" :key="zone.zone">
+                                        <tr class="border-t border-[var(--border)]">
+                                            <td class="p-3" x-text="zone.zone"></td>
+                                            <td class="p-3">
+                                                <span class="badge" :class="'badge-' + zone.risk" x-text="zone.risk"></span>
+                                            </td>
+                                            <td class="p-3" x-text="zone.blocked"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Active Missions -->
+                <div x-show="activeMissions.length > 0" class="mt-6">
+                    <div class="section-title">Active Missions</div>
+                    <div class="grid grid-cols-3 gap-4">
+                        <template x-for="mission in activeMissions" :key="mission.mission_id">
+                            <div class="card p-4">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="font-bold" x-text="mission.mission_id"></span>
+                                    <span class="badge" :class="getMissionBadgeClass(mission.status)" x-text="mission.status"></span>
+                                </div>
+                                <div class="text-sm text-[var(--text-secondary)]">
+                                    <div>Team: <span class="text-[var(--text-primary)]" x-text="mission.team_name"></span></div>
+                                    <div>Target: <span class="text-[var(--text-primary)]" x-text="mission.target_node"></span></div>
+                                    <div>Algorithm: <span class="text-[var(--text-primary)]" x-text="mission.algorithm_used"></span></div>
+                                </div>
+                                <div class="mt-3">
+                                    <div class="text-xs text-[var(--text-secondary)] mb-1">
+                                        Step <span x-text="mission.current_step"></span> of <span x-text="mission.total_path_length"></span>
+                                    </div>
+                                    <div class="h-2 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
+                                        <div class="h-full bg-[var(--accent-blue)] transition-all"
+                                             :style="'width: ' + ((mission.current_step / mission.total_path_length) * 100) + '%'"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Disaster Control Tab -->
+            <div x-show="activeTab === 'disaster'" class="p-6">
+                <div class="grid grid-cols-2 gap-6">
+                    <!-- Create Disaster -->
+                    <div class="card p-6">
+                        <div class="section-title">Simulate New Disaster</div>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="form-label">Disaster Type</label>
+                                <select x-model="newDisaster.type" class="form-input">
+                                    <option value="flood">Flood</option>
+                                    <option value="earthquake">Earthquake</option>
+                                    <option value="fire">Fire</option>
+                                    <option value="landslide">Landslide</option>
+                                </select>
+                                <p class="text-xs text-[var(--text-secondary)] mt-1" x-text="disasterDescriptions[newDisaster.type]"></p>
+                            </div>
+                            
+                            <div>
+                                <label class="form-label">Epicenter Node</label>
+                                <select x-model="newDisaster.epicenter" class="form-input">
+                                    <template x-for="node in cityNodes" :key="node.id">
+                                        <option :value="node.id" x-text="node.name + ' (' + node.type + ')'"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="form-label">Severity</label>
+                                    <select x-model="newDisaster.severity" class="form-input">
+                                        <option value="low">Low</option>
+                                        <option value="medium">Medium</option>
+                                        <option value="high">High</option>
+                                        <option value="critical">Critical</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="form-label">Radius (hops)</label>
+                                    <input type="number" x-model="newDisaster.radius" min="1" max="5" class="form-input">
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" x-model="newDisaster.preview" id="preview" class="rounded">
+                                <label for="preview" class="text-sm text-[var(--text-secondary)]">Preview before triggering</label>
+                            </div>
+                            
+                            <button @click="createDisaster()" class="btn-primary w-full">
+                                Trigger Disaster
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Stranded Population Control -->
+                    <div class="card p-6">
+                        <div class="section-title">Stranded Population Control</div>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="form-label">Select Node</label>
+                                <select x-model="selectedStrandedNode" class="form-input">
+                                    <option value="">Choose a node...</option>
+                                    <template x-for="node in affectedNodes" :key="node.id">
+                                        <option :value="node.id" x-text="node.name + ' - ' + node.zone"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            
+                            <div x-show="selectedStrandedNode">
+                                <div class="grid grid-cols-2 gap-4 mb-4">
+                                    <div class="p-3 bg-[var(--bg-secondary)] rounded">
+                                        <div class="text-xs text-[var(--text-secondary)]">Current Stranded</div>
+                                        <div class="text-xl font-bold" x-text="strandedForm.people_stranded"></div>
+                                    </div>
+                                    <div class="p-3 bg-[var(--bg-secondary)] rounded">
+                                        <div class="text-xs text-[var(--text-secondary)]">Capacity</div>
+                                        <div class="text-xl font-bold" x-text="strandedForm.capacity"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="form-label">People Stranded</label>
+                                        <input type="number" x-model="strandedForm.people_stranded" min="0" :max="strandedForm.capacity" class="form-input">
+                                    </div>
+                                    <div>
+                                        <label class="form-label">Injury Level</label>
+                                        <select x-model="strandedForm.injury_level" class="form-input">
+                                            <option value="none">None</option>
+                                            <option value="low">Low</option>
+                                            <option value="medium">Medium</option>
+                                            <option value="high">High</option>
+                                            <option value="critical">Critical</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">Survival Chance</label>
+                                        <input type="number" x-model="strandedForm.survival_chance" min="0.1" max="1" step="0.05" class="form-input">
+                                    </div>
+                                    <div>
+                                        <label class="form-label">Rescue Cost</label>
+                                        <input type="number" x-model="strandedForm.rescue_cost" min="0" max="10" class="form-input">
+                                    </div>
+                                </div>
+                                
+                                <button @click="updateStranded()" class="btn-primary w-full mt-4">
+                                    Save Node Settings
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Road Management -->
+                <div class="card p-6 mt-6">
+                    <div class="section-title">Manual Road Management</div>
+                    
+                    <div class="grid grid-cols-2 gap-6">
+                        <div>
+                            <label class="form-label">Block Road</label>
+                            <div class="flex gap-2">
+                                <select x-model="roadBlock.nodeA" class="form-input flex-1">
+                                    <option value="">Node A</option>
+                                    <template x-for="node in cityNodes" :key="node.id">
+                                        <option :value="node.id" x-text="node.name"></option>
+                                    </template>
+                                </select>
+                                <select x-model="roadBlock.nodeB" class="form-input flex-1">
+                                    <option value="">Node B</option>
+                                    <template x-for="node in cityNodes" :key="node.id">
+                                        <option :value="node.id" x-text="node.name"></option>
+                                    </template>
+                                </select>
+                                <button @click="blockRoad()" class="btn-danger">Block</button>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="form-label">Unblock Road</label>
+                            <div class="flex gap-2">
+                                <select x-model="roadUnblock" class="form-input flex-1">
+                                    <option value="">Select blocked road...</option>
+                                    <template x-for="edge in blockedEdges" :key="edge[0] + '-' + edge[1]">
+                                        <option :value="JSON.stringify(edge)" x-text="edge[0] + ' - ' + edge[1]"></option>
+                                    </template>
+                                </select>
+                                <button @click="unblockRoad()" class="btn-success">Unblock</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Active Disasters List -->
+                <div class="mt-6">
+                    <div class="section-title">Active Disasters</div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <template x-for="event in activeEvents" :key="event.event_id">
+                            <div class="card p-4">
+                                <div class="flex justify-between items-start mb-2">
+                                    <div>
+                                        <span class="font-bold capitalize" x-text="event.type"></span>
+                                        <span class="mx-2 text-[var(--text-secondary)]">•</span>
+                                        <span x-text="event.event_id"></span>
+                                    </div>
+                                    <button @click="resolveDisaster(event.event_id)" class="text-xs bg-[var(--accent-green)] text-[#181926] px-2 py-1 rounded font-medium">
+                                        Resolve
+                                    </button>
+                                </div>
+                                <div class="text-sm text-[var(--text-secondary)] space-y-1">
+                                    <div>Severity: <span class="badge" :class="'badge-' + event.severity" x-text="event.severity"></span></div>
+                                    <div>Epicenter: <span class="text-[var(--text-primary)]" x-text="event.affected_nodes?.[0]"></span></div>
+                                    <div>Affected: <span class="text-[var(--text-primary)]" x-text="event.affected_nodes?.length || 0"></span> nodes</div>
+                                    <div>Blocked: <span class="text-[var(--text-primary)]" x-text="event.blocked_edges?.length || 0"></span> roads</div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Rescue Operations Tab -->
+            <div x-show="activeTab === 'rescue'" class="p-6">
+                <!-- Team Status -->
+                <div class="card p-6 mb-6">
+                    <div class="section-title">Team Status Overview</div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-[var(--bg-secondary)]">
+                                <tr>
+                                    <th class="p-3 text-left text-[var(--text-secondary)]">Team</th>
+                                    <th class="p-3 text-left text-[var(--text-secondary)]">Type</th>
+                                    <th class="p-3 text-left text-[var(--text-secondary)]">Location</th>
+                                    <th class="p-3 text-left text-[var(--text-secondary)]">Status</th>
+                                    <th class="p-3 text-left text-[var(--text-secondary)]">Fuel %</th>
+                                    <th class="p-3 text-left text-[var(--text-secondary)]">Kits</th>
+                                    <th class="p-3 text-left text-[var(--text-secondary)]">Rescued</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="team in rescueTeams" :key="team.unit_id">
+                                    <tr class="border-t border-[var(--border)]">
+                                        <td class="p-3 font-medium" x-text="team.name"></td>
+                                        <td class="p-3" x-text="team.unit_type"></td>
+                                        <td class="p-3" x-text="team.current_node"></td>
+                                        <td class="p-3">
+                                            <span class="badge" :class="team.status === 'available' ? 'badge-low' : 'badge-high'" x-text="team.status"></span>
+                                        </td>
+                                        <td class="p-3" :class="(team.fuel_remaining / team.fuel_capacity * 100) < 20 ? 'text-[var(--accent-red)] font-bold' : ''">
+                                            <span x-text="Math.round(team.fuel_remaining / team.fuel_capacity * 100)"></span>%
+                                        </td>
+                                        <td class="p-3" x-text="team.medical_kits"></td>
+                                        <td class="p-3" x-text="team.total_rescued || 0"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Active Missions -->
+                <div x-show="activeMissions.length > 0" class="mb-6">
+                    <div class="section-title flex justify-between items-center">
+                        <span>Active Missions</span>
+                        <button @click="clearCompletedMissions()" class="text-sm btn-primary">Clear Completed</button>
+                    </div>
+                    <div class="space-y-4">
+                        <template x-for="mission in activeMissions" :key="mission.mission_id">
+                            <div class="card p-4">
+                                <div class="flex justify-between items-start mb-3">
+                                    <div>
+                                        <span class="font-bold" x-text="mission.mission_id"></span>
+                                        <span class="mx-2 text-[var(--text-secondary)]">|</span>
+                                        <span x-text="mission.team_name"></span>
+                                        <span class="badge ml-2" :class="getMissionBadgeClass(mission.status)" x-text="mission.status"></span>
+                                    </div>
+                                    <div class="text-sm text-[var(--text-secondary)]" x-text="mission.algorithm_used"></div>
+                                </div>
+                                
+                                <div class="text-sm text-[var(--text-secondary)] mb-3">
+                                    Target: <span class="text-[var(--text-primary)] font-medium" x-text="mission.target_name || mission.target_node"></span>
+                                    <span class="mx-2">•</span>
+                                    Step <span x-text="mission.current_step"></span> of <span x-text="mission.total_path_length"></span>
+                                </div>
+                                
+                                <div class="h-2 bg-[var(--bg-secondary)] rounded-full overflow-hidden mb-3">
+                                    <div class="h-full bg-[var(--accent-blue)] transition-all"
+                                         :style="'width: ' + ((mission.current_step / mission.total_path_length) * 100) + '%'"></div>
+                                </div>
+                                
+                                <div class="flex gap-2 flex-wrap">
+                                    <template x-if="mission.status === 'en_route' || mission.status === 'returning'">
+                                        <button @click="advanceMission(mission.mission_id)" class="btn-primary text-sm">
+                                            Advance Step
+                                        </button>
+                                    </template>
+                                    <template x-if="mission.status === 'en_route' || mission.status === 'returning'">
+                                        <button @click="showMissionFullTraversal(mission.mission_id)" class="text-sm px-3 py-1 bg-[var(--bg-card)] rounded hover:bg-[var(--accent-blue)]/20">
+                                            Show Full Traversal
+                                        </button>
+                                    </template>
+                                    <template x-if="mission.status === 'arrived'">
+                                        <button @click="confirmRescue(mission.mission_id, mission.people_at_target)" class="btn-success text-sm">
+                                            Confirm Rescue (<span x-text="mission.people_at_target"></span> people)
+                                        </button>
+                                    </template>
+                                    <template x-if="mission.status === 'rescued'">
+                                        <button @click="startReturn(mission.mission_id)" class="btn-primary text-sm">
+                                            Start Return
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+                
+                <!-- Dispatch Form -->
+                <div class="card p-6">
+                    <div class="section-title">Dispatch Rescue Team</div>
+                    
+                    <div class="grid grid-cols-2 gap-6">
+                        <div>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="form-label">Target Node (with stranded people)</label>
+                                    <select x-model="dispatchForm.targetNode" class="form-input" @change="showTeamFinder = false; closestTeam = null">
+                                        <option value="">Select target...</option>
+                                        <template x-for="node in strandedNodes" :key="node.id">
+                                            <option :value="node.id" x-text="node.name + ' (' + node.people_stranded + ' stranded)'"></option>
+                                        </template>
+                                    </select>
+                                </div>
+                                
+                                <button @click="findClosestTeam()" :disabled="!dispatchForm.targetNode" 
+                                        class="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed">
+                                    Find Closest Team & Compare Algorithms
+                                </button>
+                                
+                                <!-- Closest Team Info -->
+                                <div x-show="showTeamFinder && closestTeam" class="p-4 bg-[var(--bg-secondary)] rounded-lg">
+                                    <div class="text-sm font-medium text-[var(--accent-green)] mb-2">Recommended Team</div>
+                                    <div class="text-sm">
+                                        <div><span x-text="closestTeam?.recommended_team?.name"></span> at <span x-text="closestTeam?.recommended_team?.current_node"></span></div>
+                                        <div class="text-[var(--text-secondary)]">Distance: <span x-text="closestTeam?.team_distance?.toFixed(2)"></span> min</div>
+                                        <div class="text-[var(--text-secondary)]">Path: <span x-text="closestTeam?.path?.length"></span> nodes</div>
+                                    </div>
+                                </div>
+                                
+                                <div x-show="showTeamFinder">
+                                    <label class="form-label">Select Team (or use recommended)</label>
+                                    <select x-model="dispatchForm.teamId" class="form-input">
+                                        <template x-for="team in availableTeams" :key="team.unit_id">
+                                            <option :value="team.unit_id" x-text="team.name + ' (' + team.unit_type + ')'"></option>
+                                        </template>
+                                    </select>
+                                </div>
+                                
+                                <div x-show="showTeamFinder">
+                                    <label class="form-label">Algorithm</label>
+                                    <select x-model="dispatchForm.algorithm" class="form-input">
+                                        <option value="auto">Auto (Recommended: <span x-text="closestTeam?.recommended_algorithm?.algorithm || 'BFS'"></span>)</option>
+                                        <option value="BFS">BFS</option>
+                                        <option value="DFS">DFS</option>
+                                        <option value="Dijkstra">Dijkstra</option>
+                                        <option value="A*">A*</option>
+                                        <option value="UCS">UCS</option>
+                                    </select>
+                                </div>
+                                
+                                <button @click="dispatchTeam()" :disabled="!dispatchForm.targetNode || !dispatchForm.teamId || !showTeamFinder" 
+                                        class="btn-success w-full disabled:opacity-50 disabled:cursor-not-allowed">
+                                    Dispatch Team
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div x-show="algorithmComparison.length > 0">
+                            <div class="section-title">Algorithm Comparison & Path Analysis</div>
+                            <p class="text-xs text-[var(--text-secondary)] mb-2">Click "Show Full Traversal" to see the algorithm explore the graph step by step</p>
+                            <div class="overflow-x-auto max-h-64 overflow-y-auto">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-[var(--bg-secondary)] sticky top-0">
+                                        <tr>
+                                            <th class="p-2 text-left">Algorithm</th>
+                                            <th class="p-2 text-left">Path</th>
+                                            <th class="p-2 text-left">Length</th>
+                                            <th class="p-2 text-left">Nodes</th>
+                                            <th class="p-2 text-left">Time</th>
+                                            <th class="p-2 text-left">Safety</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <template x-for="result in algorithmComparison" :key="result.Algorithm">
+                                            <tr class="border-t border-[var(--border)]" :class="result.recommended ? 'bg-[var(--accent-green)]/20' : ''">
+                                                <td class="p-2 font-medium" x-text="result.Algorithm"></td>
+                                                <td class="p-2" x-text="result['Path Found'] ? 'Yes' : 'No'"></td>
+                                                <td class="p-2" x-text="result['Path Length']"></td>
+                                                <td class="p-2" x-text="result['Nodes Explored']"></td>
+                                                <td class="p-2" x-text="result['Time (ms)']?.toFixed(1) + 'ms'"></td>
+                                                <td class="p-2" x-text="(result['Safety Score'] * 100).toFixed(0) + '%'"></td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div x-show="closestTeam?.recommended_algorithm" class="mt-3 p-3 bg-[var(--accent-blue)]/10 rounded-lg text-sm">
+                                <div class="font-medium text-[var(--accent-blue)]">Why <span x-text="closestTeam?.recommended_algorithm?.algorithm"></span> was selected:</div>
+                                <div class="text-[var(--text-secondary)]" x-text="closestTeam?.recommended_algorithm?.why_selected || 'Best balance of path length, safety, and exploration efficiency'"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Mission Traversal Visualization -->
+                <div x-show="activeMissionForViz && missionVisualization" class="card p-6 mt-6">
+                    <div class="section-title">Mission Step Visualization</div>
+                    <div class="flex items-center gap-4 mb-3">
+                        <div class="text-sm">
+                            <span class="font-medium" x-text="missionVisualization?.algorithm"></span> algorithm
+                        </div>
+                        <div class="text-sm text-[var(--text-secondary)]">
+                            Step <span x-text="missionVisualization?.step_number + 1"></span> of <span x-text="missionVisualization?.total_steps"></span>
+                        </div>
+                        <div class="text-sm text-[var(--text-secondary)]">
+                            Current: <span class="font-medium text-[var(--accent-green)]" x-text="missionVisualization?.current_node"></span>
+                            → Next: <span class="font-medium text-[var(--accent-yellow)]" x-text="missionVisualization?.next_node"></span>
+                        </div>
+                    </div>
+                    <div class="h-2 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
+                        <div class="h-full bg-[var(--accent-blue)] transition-all"
+                             :style="'width: ' + (((missionVisualization?.step_number + 1) / missionVisualization?.total_steps) * 100) + '%'"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Resource Hub Tab -->
+            <div x-show="activeTab === 'resources'" class="p-6">
+                <!-- Stats -->
+                <div class="grid grid-cols-4 gap-4 mb-6">
+                    <div class="metric-card">
+                        <div class="metric-value" x-text="resourceStats.total_available">0</div>
+                        <div class="metric-label">Available Resources</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" x-text="resourceStats.total_distributed">0</div>
+                        <div class="metric-label">Distributed</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" x-text="resourceStats.in_transit">0</div>
+                        <div class="metric-label">In Transit</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" x-text="resourceStats.zones_supplied">0</div>
+                        <div class="metric-label">Zones Supplied</div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-6">
+                    <!-- Inventory -->
+                    <div class="card p-6">
+                        <div class="section-title">Inventory</div>
+                        <div class="space-y-4">
+                            <template x-for="item in resources" :key="item.resource_id">
+                                <div class="p-4 bg-[var(--bg-secondary)] rounded-lg">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <span class="font-bold" x-text="item.name"></span>
+                                        <span x-show="item.available / item.total_stock < 0.1" class="badge badge-critical">LOW</span>
+                                    </div>
+                                    <div class="text-sm text-[var(--text-secondary)] mb-2">
+                                        Available: <span class="text-[var(--text-primary)] font-semibold" x-text="item.available"></span> / <span x-text="item.total_stock"></span> <span x-text="item.unit"></span>
+                                    </div>
+                                    <div class="h-2 bg-[var(--bg-primary)] rounded-full overflow-hidden">
+                                        <div class="h-full bg-[var(--accent-blue)] transition-all"
+                                             :style="'width: ' + ((item.distributed / item.total_stock) * 100) + '%'"></div>
+                                    </div>
+                                    <div class="flex justify-between text-xs text-[var(--text-secondary)] mt-1">
+                                        <span>In Transit: <span x-text="item.in_transit"></span></span>
+                                        <span>Distributed: <span x-text="item.distributed"></span></span>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                    
+                    <!-- Dispatch -->
+                    <div class="card p-6">
+                        <div class="section-title">Dispatch Resources</div>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="form-label">Select Resource</label>
+                                <select x-model="dispatchResourceForm.resourceId" class="form-input">
+                                    <template x-for="item in resources" :key="item.resource_id">
+                                        <option :value="item.resource_id" x-text="item.name + ' (avail: ' + item.available + ')'"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="form-label">Select Safe Zone</label>
+                                <select x-model="dispatchResourceForm.safeZoneId" class="form-input">
+                                    <template x-for="zone in safeZones" :key="zone.id">
+                                        <option :value="zone.id" x-text="zone.node_id + ' — ' + (zone.current_occupancy || 0) + '/' + zone.capacity"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="form-label">Quantity</label>
+                                <input type="number" x-model="dispatchResourceForm.quantity" min="1" class="form-input">
+                            </div>
+                            
+                            <button @click="dispatchResource()" class="btn-primary w-full">
+                                Dispatch Shipment
+                            </button>
+                        </div>
+                        
+                        <div class="section-title mt-6">Active Shipments</div>
+                        <div class="space-y-2 max-h-64 overflow-y-auto">
+                            <template x-for="shipment in activeShipments" :key="shipment.allocation_id">
+                                <div class="p-3 bg-[var(--bg-secondary)] rounded-lg flex justify-between items-center">
+                                    <div class="text-sm">
+                                        <div class="font-medium" x-text="shipment.resource_name"></div>
+                                        <div class="text-[var(--text-secondary)]">
+                                            <span x-text="shipment.quantity"></span> to <span x-text="shipment.safe_zone_name"></span>
+                                        </div>
+                                    </div>
+                                    <button @click="confirmDelivery(shipment.allocation_id)" class="btn-success text-xs">
+                                        Mark Delivered
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Safe Zone Status -->
+                <div class="mt-6">
+                    <div class="section-title flex justify-between items-center">
+                        <span>Safe Zone Status</span>
+                        <button @click="runRecoveryCycle()" class="btn-primary text-sm">Run Recovery Cycle</button>
+                    </div>
+                    <div class="grid grid-cols-3 gap-4">
+                        <template x-for="zone in safeZones" :key="zone.id">
+                            <div class="card p-4">
+                                <div class="flex justify-between items-start mb-2">
+                                    <span class="font-bold" x-text="zone.node_id"></span>
+                                    <span class="text-sm text-[var(--text-secondary)]">
+                                        <span x-text="zone.current_occupancy || 0"></span>/<span x-text="zone.capacity"></span>
+                                    </span>
+                                </div>
+                                <div class="h-2 bg-[var(--bg-secondary)] rounded-full overflow-hidden mb-3">
+                                    <div class="h-full transition-all"
+                                         :class="(zone.current_occupancy || 0) / zone.capacity > 0.9 ? 'bg-[var(--accent-red)]' : 'bg-[var(--accent-green)]'"
+                                         :style="'width: ' + (((zone.current_occupancy || 0) / zone.capacity) * 100) + '%'"></div>
+                                </div>
+                                <div class="text-xs text-[var(--text-secondary)]">
+                                    <div>Victims: <span x-text="(zone.victims?.critical || 0) + (zone.victims?.high || 0) + (zone.victims?.medium || 0) + (zone.victims?.low || 0)"></span></div>
+                                    <div>Recovered: <span x-text="zone.victims?.recovered || 0"></span></div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Algorithm Lab Tab -->
+            <div x-show="activeTab === 'algorithms'" class="p-6">
+                <div class="mb-4">
+                    <div class="section-title">Live Graph Traversal Animation</div>
+                    <p class="text-sm text-[var(--text-secondary)] mb-4">
+                        Watch algorithms explore the graph in real-time. See how BFS/DFS/A* discover nodes step by step.
+                    </p>
+                    
+                    <div class="flex gap-4 items-end mb-4">
+                        <div class="flex-1">
+                            <label class="form-label">Start Node</label>
+                            <select x-model="animationForm.start" class="form-input">
+                                <template x-for="node in cityNodes" :key="node.id">
+                                    <option :value="node.id" x-text="node.name"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div class="flex-1">
+                            <label class="form-label">Goal Node</label>
+                            <select x-model="animationForm.goal" class="form-input">
+                                <template x-for="node in cityNodes" :key="node.id">
+                                    <option :value="node.id" x-text="node.name"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div class="flex-1">
+                            <label class="form-label">Algorithm</label>
+                            <select x-model="animationForm.algorithm" class="form-input">
+                                <option value="BFS">BFS</option>
+                                <option value="DFS">DFS</option>
+                                <option value="Dijkstra">Dijkstra</option>
+                                <option value="A*">A*</option>
+                                <option value="UCS">UCS</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Speed (ms/step)</label>
+                            <input type="number" x-model="animationForm.speed" min="100" max="2000" step="100" class="form-input w-24">
+                        </div>
+                        <button @click="runAnimation()" :disabled="isAnimating" class="btn-primary disabled:opacity-50">
+                            <span x-show="!isAnimating">Run Animation</span>
+                            <span x-show="isAnimating">Running...</span>
+                        </button>
+                    </div>
+                    
+                    <div x-show="animationSteps.length > 0" class="mb-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm text-[var(--text-secondary)]">
+                                Step <span x-text="currentAnimationStep + 1"></span> of <span x-text="animationSteps.length"></span>
+                            </span>
+                            <div class="flex gap-2">
+                                <button @click="prevStep()" class="px-3 py-1 bg-[var(--bg-card)] rounded text-sm">Previous</button>
+                                <button @click="playPauseAnimation()" class="px-3 py-1 bg-[var(--accent-blue)] text-[#181926] rounded text-sm font-medium" x-text="animationPlaying ? 'Pause' : 'Play'"></button>
+                                <button @click="nextStep()" class="px-3 py-1 bg-[var(--bg-card)] rounded text-sm">Next</button>
+                            </div>
+                        </div>
+                        <div class="h-2 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
+                            <div class="h-full bg-[var(--accent-blue)] transition-all"
+                                 :style="'width: ' + (((currentAnimationStep + 1) / animationSteps.length) * 100) + '%'"></div>
+                        </div>
+                        <div x-show="animationResult" class="mt-2 text-sm">
+                            <span class="text-[var(--accent-green)]" x-text="animationResult"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="graph-container"></div>
+                
+                <!-- Algorithm Race -->
+                <div class="mt-8">
+                    <div class="section-title">Algorithm Race - Comparative Visualization</div>
+                    <p class="text-sm text-[var(--text-secondary)] mb-4">
+                        Watch all 5 algorithms explore the same source-target pair simultaneously in split panels.
+                    </p>
+                    
+                    <div class="flex gap-4 items-end mb-4">
+                        <div class="flex-1">
+                            <label class="form-label">Start Node</label>
+                            <select x-model="raceForm.start" class="form-input">
+                                <template x-for="node in cityNodes" :key="node.id">
+                                    <option :value="node.id" x-text="node.name"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div class="flex-1">
+                            <label class="form-label">Goal Node</label>
+                            <select x-model="raceForm.goal" class="form-input">
+                                <template x-for="node in cityNodes" :key="node.id">
+                                    <option :value="node.id" x-text="node.name"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <button @click="runAlgorithmRace()" :disabled="isRacing" class="btn-primary disabled:opacity-50">
+                            <span x-show="!isRacing">Start Race</span>
+                            <span x-show="isRacing">Racing...</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Race Panels -->
+                    <div x-show="raceResults" class="grid grid-cols-5 gap-2">
+                        <template x-for="algo in ['BFS', 'DFS', 'Dijkstra', 'A*', 'UCS']" :key="algo">
+                            <div>
+                                <div class="text-center text-sm font-medium mb-2" x-text="algo"></div>
+                                <div :id="'race-panel-' + algo" class="race-panel"></div>
+                                <div x-show="raceResults && raceResults[algo]" class="text-xs text-center mt-1 text-[var(--text-secondary)]">
+                                    <span x-text="raceResults[algo]?.visited_count || 0"></span> nodes
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Evacuation Wave Modal -->
+    <div x-show="showEvacuationWaveModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" @click.self="showEvacuationWaveModal = false">
+        <div class="bg-[var(--bg-primary)] rounded-xl p-6 w-96 max-w-full">
+            <div class="section-title">Evacuation Wave Simulation</div>
+            <p class="text-sm text-[var(--text-secondary)] mb-4">
+                Visualize how a disaster spreads from an epicenter node hop by hop.
+            </p>
+            <div class="space-y-4">
+                <div>
+                    <label class="form-label">Epicenter Node</label>
+                    <select x-model="waveForm.epicenter" class="form-input">
+                        <template x-for="node in cityNodes" :key="node.id">
+                            <option :value="node.id" x-text="node.name"></option>
+                        </template>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">Max Hops</label>
+                    <input type="number" x-model="waveForm.maxHops" min="1" max="10" class="form-input">
+                </div>
+                <div class="flex gap-2">
+                    <button @click="runEvacuationWave()" class="btn-primary flex-1">Run Simulation</button>
+                    <button @click="showEvacuationWaveModal = false" class="px-4 py-2 bg-[var(--bg-card)] rounded-lg">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

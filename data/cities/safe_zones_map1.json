@@ -1,65 +1,71 @@
 [
   {
-    "id": "SZ-01",
-    "name": "N007",
-    "node_id": "N007",
-    "capacity": 5000,
-    "current_occupancy": 0,
+    "id": "sz1",
+    "city": "Simple City",
+    "node_id": "SZ1",
+    "name": "Safe Zone Alpha",
+    "capacity": 200,
+    "current_occupancy": 20,
     "resources": {
       "food_packets": 0,
       "water_liters": 0,
-      "medical_kits": 0,
-      "blankets": 0
+      "medical_kits": 8,
+      "rescue_boats": 0,
+      "emergency_medicines": 20
     },
     "victims": {
       "critical": 0,
-      "high": 0,
+      "high": 20,
       "medium": 0,
       "low": 0,
       "recovered": 0,
-      "total": 0
+      "total": 20
     }
   },
   {
-    "id": "SZ-02",
-    "name": "N014",
-    "node_id": "N014",
-    "capacity": 4500,
-    "current_occupancy": 0,
+    "id": "sz2",
+    "city": "Simple City",
+    "node_id": "SZ2",
+    "name": "Safe Zone Beta",
+    "capacity": 200,
+    "current_occupancy": 14,
     "resources": {
       "food_packets": 0,
       "water_liters": 0,
-      "medical_kits": 0,
-      "blankets": 0
+      "medical_kits": 9,
+      "rescue_boats": 0,
+      "emergency_medicines": 20
     },
     "victims": {
       "critical": 0,
       "high": 0,
       "medium": 0,
-      "low": 0,
+      "low": 14,
       "recovered": 0,
-      "total": 0
+      "total": 14
     }
   },
   {
-    "id": "SZ-03",
-    "name": "N020",
-    "node_id": "N020",
-    "capacity": 4800,
-    "current_occupancy": 0,
+    "id": "sz3",
+    "city": "Simple City",
+    "node_id": "H1",
+    "name": "Central Hospital",
+    "capacity": 150,
+    "current_occupancy": 50,
     "resources": {
       "food_packets": 0,
       "water_liters": 0,
-      "medical_kits": 0,
-      "blankets": 0
+      "medical_kits": 45,
+      "rescue_boats": 0,
+      "emergency_medicines": 100
     },
     "victims": {
       "critical": 0,
       "high": 0,
       "medium": 0,
-      "low": 0,
+      "low": 50,
       "recovered": 0,
-      "total": 0
+      "total": 50
     }
   },
   {

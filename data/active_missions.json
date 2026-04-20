@@ -1,1 +1,42 @@
-{"missions": []}
+{
+  "missions": [
+    {
+      "mission_id": "M1776714715",
+      "city": "Map 1",
+      "team_id": "T003",
+      "team_name": "Civic Shield",
+      "team_type": "police",
+      "target_node": "H1",
+      "target_name": "Central Hospital",
+      "path": [
+        "H1"
+      ],
+      "path_names": [
+        "Central Hospital"
+      ],
+      "original_path_length": 0,
+      "current_step": 0,
+      "algorithm_used": "UCS",
+      "why_selected": "Lowest composite score across time, exploration count, path length, and safety.",
+      "total_path_length": 0,
+      "nodes_explored": 1,
+      "time_ms": 0.0002500019036233425,
+      "people_at_target": 50,
+      "injury_level": "low",
+      "status": "complete",
+      "phase": "to_safe_zone",
+      "dispatched_at": "2026-04-21T01:21:55",
+      "arrived_at": "2026-04-21T01:22:01",
+      "rescued_at": "2026-04-21T01:22:01",
+      "completed_at": "2026-04-21T01:22:03",
+      "fuel_used": 0,
+      "used_air_edges": false,
+      "replanned": false,
+      "original_algorithm": "UCS",
+      "safe_zone_id": "sz3",
+      "safe_zone_name": "Central Hospital",
+      "safe_zone_node": "H1",
+      "rescued_people": 50
+    }
+  ]
+}

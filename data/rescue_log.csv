@@ -1,1 +1,5 @@
-log_id,timestamp,city,team_id,team_name,team_type,from_node,to_node,algorithm_used,path_length,nodes_explored,time_ms,people_rescued,fuel_used,status
+log_id,timestamp,city,team_id,team_name,team_type,from_node,from_name,to_node,to_name,algorithm_used,path_length,nodes_explored,time_ms,people_rescued,fuel_used,medical_kits_used,knapsack_selected,status
+LOG-M1776711305,2026-04-21T00:25:09,Map 1,T001,SkyLift One,helicopter,N007,N006,N006,N006,UCS,1,2,0.0165000092238187,20,3,1,False,rescued
+LOG-M1776713556,2026-04-21T01:02:41,Map 1,T002,Rapid Care,ambulance,SZ2,East Corner,E1,East Corner,DFS,1,2,0.0069579982664436,14,2,0,False,rescued
+LOG-M1776713724,2026-04-21T01:05:32,Map 1,T001,SkyLift One,helicopter,SZ1,North Plaza,N3,North Plaza,DFS,2,3,0.009125011274591,20,4,1,False,rescued
+LOG-M1776714715,2026-04-21T01:22:01,Map 1,T003,Civic Shield,police,H1,Central Hospital,H1,Central Hospital,UCS,0,1,0.0002500019036233425,50,0,0,False,rescued

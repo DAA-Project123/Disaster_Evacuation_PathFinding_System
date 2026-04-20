@@ -1,15 +1,17 @@
 [
   {
-    "id": "SZ-01",
-    "name": "N005",
-    "node_id": "N005",
-    "capacity": 5000,
+    "id": "sz1",
+    "city": "Metro City",
+    "node_id": "SZ1",
+    "name": "Central Shelter",
+    "capacity": 300,
     "current_occupancy": 0,
     "resources": {
       "food_packets": 0,
       "water_liters": 0,
-      "medical_kits": 0,
-      "blankets": 0
+      "medical_kits": 20,
+      "rescue_boats": 0,
+      "emergency_medicines": 50
     },
     "victims": {
       "critical": 0,
@@ -21,16 +23,18 @@
     }
   },
   {
-    "id": "SZ-02",
-    "name": "N010",
-    "node_id": "N010",
-    "capacity": 4500,
+    "id": "sz2",
+    "city": "Metro City",
+    "node_id": "SZ2",
+    "name": "East Emergency Hub",
+    "capacity": 250,
     "current_occupancy": 0,
     "resources": {
       "food_packets": 0,
       "water_liters": 0,
-      "medical_kits": 0,
-      "blankets": 0
+      "medical_kits": 15,
+      "rescue_boats": 0,
+      "emergency_medicines": 40
     },
     "victims": {
       "critical": 0,
@@ -42,16 +46,18 @@
     }
   },
   {
-    "id": "SZ-03",
-    "name": "N015",
-    "node_id": "N015",
-    "capacity": 4800,
+    "id": "sz3",
+    "city": "Metro City",
+    "node_id": "SZ3",
+    "name": "West Rescue Center",
+    "capacity": 200,
     "current_occupancy": 0,
     "resources": {
       "food_packets": 0,
       "water_liters": 0,
-      "medical_kits": 0,
-      "blankets": 0
+      "medical_kits": 15,
+      "rescue_boats": 0,
+      "emergency_medicines": 30
     },
     "victims": {
       "critical": 0,
@@ -63,16 +69,18 @@
     }
   },
   {
-    "id": "SZ-04",
-    "name": "N020",
-    "node_id": "N020",
-    "capacity": 5200,
+    "id": "sz4",
+    "city": "Metro City",
+    "node_id": "H1",
+    "name": "Metro General Hospital",
+    "capacity": 200,
     "current_occupancy": 0,
     "resources": {
       "food_packets": 0,
       "water_liters": 0,
-      "medical_kits": 0,
-      "blankets": 0
+      "medical_kits": 100,
+      "rescue_boats": 0,
+      "emergency_medicines": 200
     },
     "victims": {
       "critical": 0,
@@ -84,37 +92,18 @@
     }
   },
   {
-    "id": "SZ-05",
-    "name": "N025",
-    "node_id": "N025",
-    "capacity": 4600,
+    "id": "sz5",
+    "city": "Metro City",
+    "node_id": "H2",
+    "name": "Downtown Medical",
+    "capacity": 150,
     "current_occupancy": 0,
     "resources": {
       "food_packets": 0,
       "water_liters": 0,
-      "medical_kits": 0,
-      "blankets": 0
-    },
-    "victims": {
-      "critical": 0,
-      "high": 0,
-      "medium": 0,
-      "low": 0,
-      "recovered": 0,
-      "total": 0
-    }
-  },
-  {
-    "id": "SZ-06",
-    "name": "N030",
-    "node_id": "N030",
-    "capacity": 4900,
-    "current_occupancy": 0,
-    "resources": {
-      "food_packets": 0,
-      "water_liters": 0,
-      "medical_kits": 0,
-      "blankets": 0
+      "medical_kits": 80,
+      "rescue_boats": 0,
+      "emergency_medicines": 150
     },
     "victims": {
       "critical": 0,

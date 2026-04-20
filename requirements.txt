@@ -1,7 +1,6 @@
-streamlit
+fastapi
+uvicorn[standard]
 networkx
-plotly
-matplotlib
 numpy
-streamlit-option-menu
 pandas
+python-multipart
